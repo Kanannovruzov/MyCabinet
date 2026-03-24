@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Modal, FlatList,
-  ActivityIndicator, RefreshControl, TouchableOpacity, Image, Pressable,
+  View, Text, StyleSheet, ScrollView,
+  ActivityIndicator, RefreshControl, TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
-import { api, CertItem, NotifItem } from '@/services/api';
+import { api, CertItem } from '@/services/api';
 
 const BG     = '#060d1a';
 const BG2    = '#0a1628';
@@ -57,15 +57,12 @@ function MiniCertCard({ cert }: { cert: CertItem }) {
 export default function HomeScreen() {
   const { pin, nameAz, photoUrl, setAuth } = useAuth();
   const [certs, setCerts]           = useState<CertItem[]>([]);
-  const [notifs, setNotifs]         = useState<NotifItem[]>([]);
   const [unread, setUnread]         = useState(0);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState(false);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [selectedNotif, setSelectedNotif] = useState<NotifItem | null>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -78,10 +75,7 @@ export default function HomeScreen() {
       ]);
       if (certsRes.ok) setCerts(certsRes.items);
       else setError(true);
-      if (notifRes.ok) {
-        setNotifs(notifRes.items || []);
-        setUnread(notifRes.unread);
-      }
+      if (notifRes.ok) setUnread(notifRes.unread);
       if (profileRes.ok && profileRes.item) {
         const p = profileRes.item;
         const shortNameAz = p.name_azD || p.name_az;
@@ -164,7 +158,7 @@ export default function HomeScreen() {
               <Text style={styles.nameText}>{displayName}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notifBtn} onPress={() => setShowNotifs(true)}>
+          <TouchableOpacity style={styles.notifBtn} onPress={() => router.navigate('/notifications')}>
             <Text style={styles.notifIcon}>🔔</Text>
             {unread > 0 && (
               <View style={styles.badge}>
@@ -305,61 +299,6 @@ export default function HomeScreen() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Notification list modal */}
-      <Modal visible={showNotifs} animationType="slide" transparent={false}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
-          <View style={nStyles.sheetHeader}>
-            <Text style={nStyles.sheetTitle}>Bildirişlər</Text>
-            {unread > 0 && <Text style={nStyles.unreadLabel}>{unread} oxunmamış</Text>}
-            <TouchableOpacity onPress={() => setShowNotifs(false)} style={nStyles.closeBtn}>
-              <Text style={nStyles.closeBtnText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          {notifs.length === 0 ? (
-            <View style={nStyles.emptyWrap}>
-              <Text style={{ fontSize: 28 }}>🔕</Text>
-              <Text style={nStyles.emptyText}>Bildiriş yoxdur</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={notifs}
-              keyExtractor={i => String(i.id)}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
-              renderItem={({ item }) => {
-                const isUnread = item.is_read === 0;
-                const isExpanded = selectedNotif?.id === item.id;
-                return (
-                  <TouchableOpacity
-                    style={[nStyles.notifItem, isUnread && nStyles.notifItemUnread]}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      if (isUnread) {
-                        api.markRead(item.id).catch(() => {});
-                        setNotifs(prev => prev.map(n => n.id === item.id ? { ...n, is_read: 1 } : n));
-                        setUnread(prev => Math.max(0, prev - 1));
-                      }
-                      setSelectedNotif(isExpanded ? null : item);
-                    }}
-                  >
-                    {isUnread && <View style={nStyles.dot} />}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[nStyles.notifTitle, isUnread && { color: WHITE }]}>{item.title}</Text>
-                      {isExpanded && !!item.body ? (
-                        <Text style={nStyles.notifBodyFull}>{item.body}</Text>
-                      ) : (
-                        !!item.body && <Text style={nStyles.notifBody} numberOfLines={2}>{item.body}</Text>
-                      )}
-                      <Text style={nStyles.notifDate}>{item.created_at}</Text>
-                    </View>
-                    <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 18 }}>{isExpanded ? '‹' : '›'}</Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          )}
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -570,49 +509,3 @@ const styles = StyleSheet.create({
   emptyText: { color: MUTED, fontSize: 14 },
 });
 
-const nStyles = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: BG2,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    maxHeight: '75%',
-    paddingHorizontal: 16, paddingBottom: 20,
-  },
-  handle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignSelf: 'center', marginTop: 10, marginBottom: 12,
-  },
-  sheetHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginBottom: 14, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(0,212,200,0.1)',
-  },
-  sheetTitle: { color: WHITE, fontSize: 18, fontWeight: '700', flex: 1 },
-  unreadLabel: { color: TEAL, fontSize: 12, fontWeight: '600' },
-  closeBtn: { padding: 4 },
-  closeBtnText: { color: MUTED, fontSize: 18, fontWeight: '300' },
-  emptyWrap: { padding: 40, alignItems: 'center', gap: 8 },
-  emptyText: { color: MUTED, fontSize: 14 },
-  notifItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 14, borderRadius: 12, marginBottom: 6,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-  },
-  notifItemUnread: {
-    backgroundColor: 'rgba(0,212,200,0.05)',
-    borderColor: 'rgba(0,212,200,0.15)',
-  },
-  dot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: TEAL,
-    shadowColor: TEAL, shadowOpacity: 1, shadowRadius: 4,
-  },
-  notifTitle: { color: MUTED, fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  notifBody: { color: 'rgba(255,255,255,0.35)', fontSize: 12, lineHeight: 18, marginTop: 3 },
-  notifBodyFull: { color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 22, marginTop: 8 },
-  notifDate: { color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 4 },
-});
