@@ -1,29 +1,20 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { Asset } from 'expo-asset';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
+import OceanWaves from '@/components/ocean-waves';
 
 const { width, height } = Dimensions.get('window');
 const BG   = '#040C1A';
 const TEAL = '#00D4C8';
 const BLUE = '#0057B7';
 
-function Wave({ delay, y, opacity: baseOp }: { delay: number; y: number; opacity: number }) {
-  const translateX = useRef(new Animated.Value(-width)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(translateX, { toValue: width, duration: 6000, delay, useNativeDriver: true })
-    ).start();
-  }, []);
-  return (
-    <Animated.View style={[styles.wave, { top: y, opacity: baseOp, transform: [{ translateX }] }]}>
-      <View style={styles.waveLine} />
-    </Animated.View>
-  );
-}
+const logoAsset = require('@/assets/images/ddla-logo.png');
 
 export default function SplashScreen() {
   const { session, pin } = useAuth();
+  const [ready, setReady] = useState(false);
   const logoScale  = useRef(new Animated.Value(0.3)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
@@ -34,6 +25,18 @@ export default function SplashScreen() {
   const glowPulse  = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    const preload = async () => {
+      try {
+        await Asset.fromModule(logoAsset).downloadAsync();
+      } catch {}
+      setReady(true);
+    };
+    preload();
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowPulse, { toValue: 0.15, duration: 1500, useNativeDriver: true }),
@@ -61,27 +64,24 @@ export default function SplashScreen() {
         router.replace('/login');
       }
     });
-  }, []);
+  }, [ready]);
 
   return (
     <View style={styles.root}>
       <View style={styles.glowTop} />
       <View style={styles.glowBottom} />
-
-      <Wave delay={0} y={height * 0.15} opacity={0.08} />
-      <Wave delay={1500} y={height * 0.35} opacity={0.06} />
-      <Wave delay={3000} y={height * 0.55} opacity={0.04} />
-      <Wave delay={800} y={height * 0.75} opacity={0.07} />
-      <Wave delay={2200} y={height * 0.9} opacity={0.05} />
+      <OceanWaves />
 
       <Animated.View style={[styles.outerRing2, { opacity: ring2Opacity, transform: [{ scale: ring2Scale }] }]} />
       <Animated.View style={[styles.outerRing, { opacity: ringOpacity, transform: [{ scale: ringScale }] }]} />
 
       <Animated.View style={[styles.glowCircle, { opacity: glowPulse }]} />
 
-      <Animated.View style={[styles.logoWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
-        <Image source={require('@/assets/images/ddla-logo.png')} style={styles.logoImg} />
-      </Animated.View>
+      {ready && (
+        <Animated.View style={[styles.logoWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+          <Image source={logoAsset} style={styles.logoImg} />
+        </Animated.View>
+      )}
 
       <Animated.View style={[styles.textBlock, { opacity: textOpacity }]}>
         <View style={styles.ddlaBadge}>
@@ -120,12 +120,6 @@ const styles = StyleSheet.create({
     width: 250, height: 250, borderRadius: 125,
     backgroundColor: TEAL,
     opacity: 0.08,
-  },
-
-  wave: { position: 'absolute', left: 0, width: width * 2, height: 2 },
-  waveLine: {
-    width: '100%', height: 2, borderRadius: 1,
-    backgroundColor: TEAL,
   },
 
   outerRing2: {

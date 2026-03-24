@@ -107,10 +107,13 @@ Expo React Native mobile app — "DDLA MyCabinet" (Seafarer Personal Cabinet).
 - DDLA logo: `assets/images/ddla-logo.png` (circular DDLA emblem), `assets/images/mycabinet-brand.png`
 - Key screens: splash, login, home tabs (certificates, trainings, services, profile), notifications, documents, feedback, settings
 - Features: animated splash, SVG ocean waves, smooth page transitions (slide_from_right/fade_from_bottom), tab animation ('shift'), pulsing online dots, glass-morphism cards
-- Settings screen: biometric login toggle (expo-local-authentication), dark/light mode switch
+- Settings screen: PIN passcode (4-digit with numpad modal) + biometric (face/fingerprint, grayed out if unsupported) + dark/light mode switch
+- PIN stored securely via expo-secure-store (native) / AsyncStorage (web fallback)
+- Logo preloading: expo-asset preloads images before splash/login animations start
 - Back buttons: all secondary screens use `<Feather name="arrow-left" />` in a styled rounded box
 - Profile: "ID: {seaman_id}" pill with Feather hash icon; Settings accessible from profile gear button
-- AsyncStorage keys: `session`, `pin`, `nameAz`, `nameEn`, `seamanId`, `photoUrl`, `theme`, `biometric`
+- AsyncStorage keys: `session`, `pin`, `nameAz`, `nameEn`, `seamanId`, `photoUrl`, `theme`, `biometric`, `pinEnabled`
+- SecureStore keys: `appPin` (4-digit app passcode)
 
 ### `scripts` (`@workspace/scripts`)
 

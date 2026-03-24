@@ -6,12 +6,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { Asset } from 'expo-asset';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { api } from '@/services/api';
 import OceanWaves from '@/components/ocean-waves';
+
+const brandAsset = require('@/assets/images/mycabinet-brand.png');
+const logoAsset = require('@/assets/images/ddla-logo.png');
+Asset.fromModule(brandAsset).downloadAsync().catch(() => {});
+Asset.fromModule(logoAsset).downloadAsync().catch(() => {});
 
 const LOGIN_URL = 'https://seafarer.ddla.gov.az/login?mobile=1';
 const { width, height } = Dimensions.get('window');
@@ -136,7 +142,7 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.topBar}>
-              <Image source={require('@/assets/images/mycabinet-brand.png')} style={styles.topBrand} resizeMode="contain" />
+              <Image source={brandAsset} style={styles.topBrand} resizeMode="contain" />
               <View style={styles.topBadge}>
                 <View style={styles.liveDot} />
                 <Text style={styles.liveText}>Rəsmi Platforma</Text>
@@ -148,7 +154,7 @@ export default function LoginScreen() {
                 <Animated.View style={[styles.ring, styles.ring2, { transform: [{ scale: pulse2 }] }]} />
                 <Animated.View style={[styles.ring, styles.ring1, { transform: [{ scale: pulse1 }] }]} />
                 <View style={styles.centerLogoWrap}>
-                  <Image source={require('@/assets/images/ddla-logo.png')} style={styles.centerLogo} />
+                  <Image source={logoAsset} style={styles.centerLogo} />
                 </View>
               </View>
 

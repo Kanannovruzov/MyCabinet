@@ -57,6 +57,8 @@
   },
   "dependencies": {
     "@react-navigation/elements": "^2.9.12",
-    "expo-local-authentication": "~17.0.8"
+    "expo-asset": "^55.0.10",
+    "expo-local-authentication": "~17.0.8",
+    "expo-secure-store": "^55.0.9"
   }
 }

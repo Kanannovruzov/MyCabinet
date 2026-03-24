@@ -1,5 +1,34 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+
+const secureGet = async (key: string) => {
+  try {
+    if (Platform.OS === 'web') return AsyncStorage.getItem(key);
+    return SecureStore.getItemAsync(key);
+  } catch {
+    return AsyncStorage.getItem(key);
+  }
+};
+
+const secureSet = async (key: string, value: string) => {
+  try {
+    if (Platform.OS === 'web') return AsyncStorage.setItem(key, value);
+    return SecureStore.setItemAsync(key, value);
+  } catch {
+    return AsyncStorage.setItem(key, value);
+  }
+};
+
+const secureDelete = async (key: string) => {
+  try {
+    if (Platform.OS === 'web') return AsyncStorage.removeItem(key);
+    return SecureStore.deleteItemAsync(key);
+  } catch {
+    return AsyncStorage.removeItem(key);
+  }
+};
 
 export const DARK = {
   bg: '#060d1a',
@@ -53,6 +82,10 @@ type ThemeContextType = {
   toggleTheme: () => void;
   biometricEnabled: boolean;
   setBiometricEnabled: (v: boolean) => void;
+  pinEnabled: boolean;
+  setPinEnabled: (v: boolean) => void;
+  appPin: string | null;
+  setAppPin: (v: string | null) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -61,20 +94,30 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleTheme: () => {},
   biometricEnabled: false,
   setBiometricEnabled: () => {},
+  pinEnabled: false,
+  setPinEnabled: () => {},
+  appPin: null,
+  setAppPin: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(true);
   const [biometricEnabled, setBiometric] = useState(false);
+  const [pinEnabled, setPinState] = useState(false);
+  const [appPin, setAppPinState] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem('theme'),
       AsyncStorage.getItem('biometric'),
-    ]).then(([t, b]) => {
+      AsyncStorage.getItem('pinEnabled'),
+      secureGet('appPin'),
+    ]).then(([t, b, p, pin]) => {
       if (t === 'light') setIsDark(false);
       if (b === '1') setBiometric(true);
+      if (p === '1') setPinState(true);
+      if (pin) setAppPinState(pin);
       setLoaded(true);
     });
   }, []);
@@ -92,6 +135,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem('biometric', v ? '1' : '0');
   };
 
+  const setPinEnabled = (v: boolean) => {
+    setPinState(v);
+    AsyncStorage.setItem('pinEnabled', v ? '1' : '0');
+  };
+
+  const setAppPin = (v: string | null) => {
+    setAppPinState(v);
+    if (v) secureSet('appPin', v);
+    else secureDelete('appPin');
+  };
+
   if (!loaded) return null;
 
   return (
@@ -101,6 +155,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       toggleTheme,
       biometricEnabled,
       setBiometricEnabled,
+      pinEnabled,
+      setPinEnabled,
+      appPin,
+      setAppPin,
     }}>
       {children}
     </ThemeContext.Provider>
