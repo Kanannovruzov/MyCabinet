@@ -55,24 +55,34 @@ function MiniCertCard({ cert }: { cert: CertItem }) {
 }
 
 export default function HomeScreen() {
-  const { pin, nameAz, photoUrl } = useAuth();
+  const { pin, nameAz, photoUrl, setAuth } = useAuth();
   const [certs, setCerts]           = useState<CertItem[]>([]);
   const [unread, setUnread]         = useState(0);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
     setError(false);
     try {
-      const [certsRes, notifRes] = await Promise.all([
+      const [certsRes, notifRes, profileRes] = await Promise.all([
         api.certificates(),
         api.notifications().catch(() => ({ ok: false, items: [], unread: 0 })),
+        api.profile().catch(() => ({ ok: false, item: null })),
       ]);
       if (certsRes.ok) setCerts(certsRes.items);
       else setError(true);
       if (notifRes.ok) setUnread(notifRes.unread);
+      if (profileRes.ok && profileRes.item) {
+        const p = profileRes.item;
+        setProfileName(p.name_az);
+        if (pin && !nameAz && p.name_az) {
+          setAuth(pin, { nameAz: p.name_az, nameEn: p.name_en });
+        }
+      }
     } catch {
       setError(true);
     } finally {
@@ -91,11 +101,12 @@ export default function HomeScreen() {
     .filter(c => typeof c.days_left === 'number' && c.days_left > 0)
     .sort((a, b) => (a.days_left ?? 0) - (b.days_left ?? 0))[0];
 
-  const displayName = nameAz || pin || '---';
-  const firstName = nameAz ? nameAz.split(' ')[0] : pin;
-  const initials = nameAz
-    ? nameAz.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const finalName = nameAz || profileName;
+  const displayName = finalName || pin || '---';
+  const initials = finalName
+    ? finalName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
     : (pin ? pin.slice(0, 2).toUpperCase() : '??');
+  const userPhoto = photoUrl || profilePhoto;
 
   if (loading) {
     return (
@@ -122,8 +133,8 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/profile')}>
-              {photoUrl ? (
-                <Image source={{ uri: photoUrl }} style={styles.avatarImg} />
+              {userPhoto ? (
+                <Image source={{ uri: userPhoto }} style={styles.avatarImg} />
               ) : (
                 <View style={styles.avatarFallback}>
                   <Text style={styles.avatarInitials}>{initials}</Text>
