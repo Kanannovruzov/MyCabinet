@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, Animated,
   ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,31 @@ const MUTED = 'rgba(255,255,255,0.45)';
 const RED   = '#EF4444';
 const GREEN = '#22C55E';
 const BLUE  = '#0057B7';
+
+function PulsingDot() {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0.6)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scale, { toValue: 2.2, duration: 1200, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(opacity, { toValue: 0, duration: 1200, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.6, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+  }, []);
+  return (
+    <View style={styles.onlineDotWrap}>
+      <Animated.View style={[styles.onlinePulse, { transform: [{ scale }], opacity }]} />
+      <View style={styles.onlineDot} />
+    </View>
+  );
+}
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -97,6 +122,7 @@ export default function ProfileScreen() {
   }
 
   const p = profile as any;
+  const position = p?.crew || 'Dənizçi';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -110,7 +136,6 @@ export default function ProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
         }
       >
-        {/* Avatar section */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarOuter}>
             <View style={styles.avatarRing}>
@@ -122,12 +147,11 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
-            <View style={styles.onlineDot} />
+            <PulsingDot />
           </View>
 
           <Text style={styles.profileName}>{displayName}</Text>
-          {displayNameEn && <Text style={styles.profileNameEn}>{displayNameEn}</Text>}
-          <Text style={styles.profileRole}>{p?.crew || 'Dənizçi'}</Text>
+          <Text style={styles.profileRole}>{position}</Text>
 
           <View style={styles.badgeRow}>
             <View style={styles.tealPill}>
@@ -141,7 +165,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Quick actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/documents')}>
             <Text style={styles.actionIcon}>📄</Text>
@@ -157,12 +180,9 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Profile info */}
         {p ? (
           <>
             <Section title="Şəxsi məlumatlar" icon="👤">
-              <InfoRow label="Ad Soyad (AZ)" value={displayName} />
-              <InfoRow label="Ad Soyad (EN)" value={displayNameEn} />
               <InfoRow label="Cins" value={p.gender} />
               <InfoRow label="Doğum tarixi" value={p.dob} />
               <InfoRow label="FIN" value={p.fin || pin} />
@@ -175,7 +195,6 @@ export default function ProfileScreen() {
             </Section>
             <Section title="Dənizçi məlumatları" icon="⚓">
               <InfoRow label="Müəssisə" value={p.org} />
-              <InfoRow label="Vəzifə" value={p.crew} />
               <InfoRow label="Şəhadətnamə" value={p.seaman_id} />
               <InfoRow label="Verilmə" value={p.seaman_issue} />
               <InfoRow label="Etibarlılıq" value={p.seaman_valid} />
@@ -188,7 +207,6 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutText}>Çıxış et</Text>
         </TouchableOpacity>
@@ -235,14 +253,21 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { color: TEAL, fontSize: 32, fontWeight: '800' },
-  onlineDot: {
+  onlineDotWrap: {
     position: 'absolute', bottom: 4, right: 4,
+    width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+  },
+  onlinePulse: {
+    position: 'absolute',
     width: 18, height: 18, borderRadius: 9,
     backgroundColor: GREEN,
-    borderWidth: 3, borderColor: BG,
+  },
+  onlineDot: {
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: GREEN,
+    borderWidth: 2.5, borderColor: BG,
   },
   profileName: { color: WHITE, fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  profileNameEn: { color: MUTED, fontSize: 14, textAlign: 'center' },
   profileRole: { color: TEAL, fontSize: 13, fontWeight: '500' },
   badgeRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   tealPill: {

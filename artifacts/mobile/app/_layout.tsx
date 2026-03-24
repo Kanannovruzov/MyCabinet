@@ -15,13 +15,21 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
-            <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="notifications" options={{ headerShown: false }} />
-            <Stack.Screen name="documents"     options={{ headerShown: false }} />
-            <Stack.Screen name="feedback"      options={{ headerShown: false }} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              animationDuration: 300,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          >
+            <Stack.Screen name="index" options={{ animation: 'none' }} />
+            <Stack.Screen name="login" options={{ animation: 'fade_from_bottom', animationDuration: 500 }} />
+            <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: 400 }} />
+            <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="documents" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="feedback" options={{ animation: 'slide_from_bottom' }} />
           </Stack>
           <StatusBar style="light" />
         </AuthProvider>

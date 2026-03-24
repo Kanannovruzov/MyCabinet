@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Platform, Animated, Dimensions,
-  TextInput, Alert, KeyboardAvoidingView, ScrollView,
+  TextInput, Alert, KeyboardAvoidingView, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -12,6 +12,7 @@ import { useAuth } from '@/context/auth';
 import { api } from '@/services/api';
 
 const LOGIN_URL = 'https://seafarer.ddla.gov.az/login?mobile=1';
+const { width, height } = Dimensions.get('window');
 
 const BG     = '#040C1A';
 const TEAL   = '#00D4C8';
@@ -20,6 +21,20 @@ const WHITE  = '#FFFFFF';
 const MUTED  = 'rgba(255,255,255,0.45)';
 const MUTED2 = 'rgba(255,255,255,0.12)';
 const RED    = '#EF4444';
+
+function Wave({ delay, y, opacity: baseOp }: { delay: number; y: number; opacity: number }) {
+  const translateX = useRef(new Animated.Value(-width)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(translateX, { toValue: width, duration: 8000, delay, useNativeDriver: true })
+    ).start();
+  }, []);
+  return (
+    <Animated.View style={[styles.wave, { top: y, opacity: baseOp, transform: [{ translateX }] }]}>
+      <View style={styles.waveLine} />
+    </Animated.View>
+  );
+}
 
 export default function LoginScreen() {
   const { setAuth } = useAuth();
@@ -120,10 +135,12 @@ export default function LoginScreen() {
     <View style={styles.root}>
       <View style={styles.bgGlow1} />
       <View style={styles.bgGlow2} />
-      <View style={styles.waveTop} />
-      {[...Array(6)].map((_, i) => (
-        <View key={i} style={[styles.gridLine, { top: `${14 * (i + 1)}%` as any }]} />
-      ))}
+
+      <Wave delay={0} y={height * 0.12} opacity={0.06} />
+      <Wave delay={2000} y={height * 0.28} opacity={0.05} />
+      <Wave delay={4000} y={height * 0.44} opacity={0.04} />
+      <Wave delay={1000} y={height * 0.6} opacity={0.05} />
+      <Wave delay={3000} y={height * 0.76} opacity={0.03} />
 
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView
@@ -135,10 +152,9 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Top bar */}
             <View style={styles.topBar}>
-              <View style={styles.ddlaLogo}>
-                <Text style={styles.ddlaLogoText}>DDLA</Text>
+              <View style={styles.topLogoWrap}>
+                <Image source={require('@/assets/images/ddla-logo.png')} style={styles.topLogo} />
               </View>
               <View style={styles.topBadge}>
                 <View style={styles.liveDot} />
@@ -146,13 +162,12 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Center — anchor + rings */}
             <Animated.View style={[styles.center, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
               <View style={styles.ringsWrap}>
                 <Animated.View style={[styles.ring, styles.ring2, { transform: [{ scale: pulse2 }] }]} />
                 <Animated.View style={[styles.ring, styles.ring1, { transform: [{ scale: pulse1 }] }]} />
-                <View style={styles.anchorCore}>
-                  <Text style={styles.anchorEmoji}>⚓</Text>
+                <View style={styles.centerLogoWrap}>
+                  <Image source={require('@/assets/images/ddla-logo.png')} style={styles.centerLogo} />
                 </View>
               </View>
 
@@ -171,7 +186,6 @@ export default function LoginScreen() {
               </View>
             </Animated.View>
 
-            {/* Bottom — login buttons */}
             <Animated.View style={[styles.bottom, { opacity: fadeIn }]}>
               <View style={styles.divider}>
                 <View style={styles.divLine} />
@@ -179,7 +193,6 @@ export default function LoginScreen() {
                 <View style={styles.divLine} />
               </View>
 
-              {/* myGov button */}
               <TouchableOpacity
                 style={styles.mygovBtn}
                 onPress={handleMyGovLogin}
@@ -206,14 +219,12 @@ export default function LoginScreen() {
                 </View>
               </TouchableOpacity>
 
-              {/* OR divider */}
               <View style={styles.orRow}>
                 <View style={styles.orLine} />
                 <Text style={styles.orText}>və ya</Text>
                 <View style={styles.orLine} />
               </View>
 
-              {/* FIN login */}
               {!finMode ? (
                 <TouchableOpacity
                   style={styles.finBtnClosed}
@@ -284,7 +295,6 @@ export default function LoginScreen() {
                 </View>
               )}
 
-              {/* Info */}
               <View style={styles.infoRow}>
                 <Text style={styles.infoText}>Azərbaycan Respublikası</Text>
                 <View style={styles.infoDot} />
@@ -316,24 +326,15 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 280, height: 280, borderRadius: 140,
     backgroundColor: TEAL, opacity: 0.06, bottom: 80, right: -60,
   },
-  waveTop: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-    backgroundColor: TEAL, opacity: 0.6,
-  },
-  gridLine: {
-    position: 'absolute', left: 0, right: 0, height: 1,
-    backgroundColor: 'rgba(0,212,200,0.04)',
-  },
+  wave: { position: 'absolute', left: 0, width: width * 2, height: 2 },
+  waveLine: { width: '100%', height: 2, borderRadius: 1, backgroundColor: TEAL },
 
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingTop: 8,
   },
-  ddlaLogo: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8,
-    borderWidth: 1.5, borderColor: TEAL, backgroundColor: 'rgba(0,212,200,0.08)',
-  },
-  ddlaLogoText: { color: TEAL, fontSize: 13, fontWeight: '800', letterSpacing: 2 },
+  topLogoWrap: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
+  topLogo: { width: 40, height: 40 },
   topBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
@@ -357,12 +358,13 @@ const styles = StyleSheet.create({
     width: 110, height: 110,
     borderColor: 'rgba(0,212,200,0.25)', backgroundColor: 'rgba(0,212,200,0.06)',
   },
-  anchorCore: {
-    width: 60, height: 60, borderRadius: 30, backgroundColor: TEAL,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: TEAL, shadowOpacity: 0.5, shadowRadius: 16, elevation: 10,
+  centerLogoWrap: {
+    width: 72, height: 72, borderRadius: 36, overflow: 'hidden',
+    shadowColor: TEAL, shadowOpacity: 0.5, shadowRadius: 16,
   },
-  anchorEmoji: { fontSize: 26 },
+  centerLogo: {
+    width: 72, height: 72,
+  },
 
   brandBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   brandMy: { color: TEAL, fontSize: 38, fontWeight: '800', letterSpacing: -1 },

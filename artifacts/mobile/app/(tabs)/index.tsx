@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, Animated,
   ActivityIndicator, RefreshControl, TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +17,31 @@ const RED    = '#EF4444';
 const YELLOW = '#EAB308';
 const GREEN  = '#22C55E';
 const BLUE   = '#0057B7';
+
+function PulsingDot({ size = 14 }: { size?: number }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0.6)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scale, { toValue: 2.2, duration: 1200, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(opacity, { toValue: 0, duration: 1200, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.6, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+  }, []);
+  return (
+    <View style={{ position: 'absolute', bottom: 0, right: 0, width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: GREEN, transform: [{ scale }], opacity }} />
+      <View style={{ width: size - 3, height: size - 3, borderRadius: (size - 3) / 2, backgroundColor: GREEN, borderWidth: 2, borderColor: BG }} />
+    </View>
+  );
+}
 
 function certColor(percent: number, unlimited: boolean) {
   if (unlimited) return TEAL;
@@ -151,7 +176,7 @@ export default function HomeScreen() {
                   <Text style={styles.avatarInitials}>{initials}</Text>
                 </View>
               )}
-              <View style={styles.onlineDot} />
+              <PulsingDot />
             </TouchableOpacity>
             <View>
               <Text style={styles.greeting}>Xoş gəldiniz 👋</Text>
@@ -335,12 +360,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   avatarInitials: { color: TEAL, fontSize: 16, fontWeight: '800' },
-  onlineDot: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 14, height: 14, borderRadius: 7,
-    backgroundColor: GREEN,
-    borderWidth: 2.5, borderColor: BG,
-  },
   greeting: { color: MUTED, fontSize: 12, fontWeight: '500' },
   nameText: { color: WHITE, fontSize: 18, fontWeight: '700', marginTop: 1 },
   notifBtn: {

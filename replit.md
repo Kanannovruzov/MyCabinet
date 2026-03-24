@@ -91,6 +91,21 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/mobile` (`@workspace/mobile`)
+
+Expo React Native mobile app — "DDLA MyCabinet" (Seafarer Personal Cabinet).
+
+- Backend API: `https://seafarer.ddla.gov.az` — mobile routes under `/mobile/` with `mobileAuth` filter
+- Auth headers: `X-Mobile: 1`, `X-Pin: {pin}`, `X-Session: {session}`
+- FIN login: `POST /mobile/check-fin`
+- Profile: `GET /mobile/profile`
+- Photo URL: `https://seafarer.ddla.gov.az/image/{unikal}`
+- Color scheme: BG `#060d1a`, surface `#0a1628`, teal `#00d4c8`, blue `#0057B7`
+- DDLA logo: `assets/images/ddla-logo.png` (circular DDLA emblem)
+- Key screens: splash (index.tsx), login, home tabs, profile, notifications, documents, feedback
+- Features: animated splash with logo + ocean waves, animated page transitions, pulsing online dots, ocean wave backgrounds
+- AsyncStorage keys: `session`, `pin`, `nameAz`, `nameEn`, `seamanId`, `photoUrl`
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
