@@ -106,4 +106,10 @@ export const api = {
 
   trainings: () =>
     apiFetch<{ ok: boolean; items: any[] }>('/api/trainings'),
+
+  checkFin: (fin: string) =>
+    apiFetch<{ ok: boolean; session?: string; pin?: string; msg?: string }>('/api/auth/check-fin', {
+      method: 'POST',
+      body: JSON.stringify({ fin }),
+    }),
 };
