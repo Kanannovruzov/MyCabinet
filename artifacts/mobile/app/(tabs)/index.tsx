@@ -78,14 +78,20 @@ export default function HomeScreen() {
       if (notifRes.ok) setUnread(notifRes.unread);
       if (profileRes.ok && profileRes.item) {
         const p = profileRes.item;
-        setProfileName(p.name_az);
+        const shortNameAz = (p.adi_az && p.soyadi_az)
+          ? `${p.adi_az} ${p.soyadi_az}`
+          : p.name_az;
+        const shortNameEn = (p.adi && p.soyadi)
+          ? `${p.adi} ${p.soyadi}`
+          : p.name_en;
+        setProfileName(shortNameAz);
         if (p.unikal) {
           setProfilePhoto(`https://seafarer.ddla.gov.az/image/${p.unikal}`);
         }
-        if (pin && !nameAz && p.name_az) {
+        if (pin) {
           setAuth(pin, {
-            nameAz: p.name_az,
-            nameEn: p.name_en,
+            nameAz: shortNameAz,
+            nameEn: shortNameEn,
             seamanId: String(p.unikal),
             photoUrl: p.unikal ? `https://seafarer.ddla.gov.az/image/${p.unikal}` : undefined,
           });

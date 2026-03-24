@@ -48,6 +48,11 @@ export type ProfileItem = {
   unikal: number;
   name_az: string;
   name_en: string;
+  adi_az?: string;
+  soyadi_az?: string;
+  ata_adi?: string;
+  adi?: string;
+  soyadi?: string;
   gender: string;
   dob: string;
   ind_num: string;
