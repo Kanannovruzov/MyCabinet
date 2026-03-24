@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, Animated,
   ActivityIndicator, RefreshControl, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/context/auth';
+import OceanWaves from '@/components/ocean-waves';
 
 const BASE_URL = 'https://seafarer.ddla.gov.az';
 const BG    = '#060d1a';
@@ -31,12 +33,12 @@ type CourseItem = {
   course_url: string;
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  not_started: { label: 'Başlanmayıb', color: MUTED },
-  in_progress:  { label: 'Davam edir',  color: TEAL },
-  completed:    { label: 'Tamamlanıb',  color: GREEN },
-  locked:       { label: 'Kilidli',     color: MUTED },
-  cooldown:     { label: 'Gözləmə',     color: YELLOW },
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  not_started: { label: 'Başlanmayıb', color: MUTED, icon: 'circle' },
+  in_progress:  { label: 'Davam edir',  color: TEAL, icon: 'play-circle' },
+  completed:    { label: 'Tamamlanıb',  color: GREEN, icon: 'check-circle' },
+  locked:       { label: 'Kilidli',     color: MUTED, icon: 'lock' },
+  cooldown:     { label: 'Gözləmə',     color: YELLOW, icon: 'clock' },
 };
 
 function CourseCard({ course, onPress }: { course: CourseItem; onPress: () => void }) {
@@ -53,7 +55,7 @@ function CourseCard({ course, onPress }: { course: CourseItem; onPress: () => vo
       <View style={[styles.cardBar, { backgroundColor: locked ? 'rgba(255,255,255,0.1)' : cfg.color }]} />
       <View style={styles.cardBody}>
         <View style={[styles.badge, { backgroundColor: cfg.color + '18', borderColor: cfg.color + '40' }]}>
-          <View style={[styles.badgeDot, { backgroundColor: cfg.color }]} />
+          <Feather name={cfg.icon as any} size={12} color={cfg.color} />
           <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
         </View>
 
@@ -89,6 +91,10 @@ function CourseCard({ course, onPress }: { course: CourseItem; onPress: () => vo
 
         {!locked && (
           <View style={[styles.actionBtn, { borderColor: cfg.color + '60', backgroundColor: cfg.color + '12' }]}>
+            <Feather
+              name={course.status === 'not_started' ? 'play' : course.status === 'completed' ? 'refresh-cw' : 'arrow-right'}
+              size={14} color={cfg.color}
+            />
             <Text style={[styles.actionText, { color: cfg.color }]}>
               {course.status === 'not_started' ? 'Başla' : course.status === 'completed' ? 'Yenidən bax' : 'Davam et'}
             </Text>
@@ -105,6 +111,8 @@ export default function TrainingsScreen() {
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -126,6 +134,15 @@ export default function TrainingsScreen() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [loading]);
+
   const handlePress = async (course: CourseItem) => {
     if (course.course_url) {
       await WebBrowser.openBrowserAsync(`${BASE_URL}${course.course_url}`);
@@ -142,38 +159,43 @@ export default function TrainingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topbar}>
-        <View>
-          <Text style={styles.pageTitle}>Təlimlər</Text>
-          <Text style={styles.pageSubtitle}>{courses.length} kurs</Text>
+      <OceanWaves />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <View style={styles.topbar}>
+          <View>
+            <Text style={styles.pageTitle}>Təlimlər</Text>
+            <Text style={styles.pageSubtitle}>{courses.length} kurs</Text>
+          </View>
+          <View style={styles.tealPill}>
+            <Feather name="anchor" size={12} color={TEAL} />
+            <Text style={styles.pillText}>DDLA</Text>
+          </View>
         </View>
-        <View style={styles.tealPill}>
-          <View style={styles.pillDot} />
-          <Text style={styles.pillText}>DDLA</Text>
-        </View>
-      </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.list}
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
-        }
-      >
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>Təlimlər yüklənə bilmədi</Text>
-          </View>
-        ) : courses.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>Təlim tapılmadı</Text>
-          </View>
-        ) : (
-          courses.map(c => <CourseCard key={c.id} course={c} onPress={() => handlePress(c)} />)
-        )}
-        <View style={{ height: 32 }} />
-      </ScrollView>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          contentInsetAdjustmentBehavior="automatic"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
+          }
+        >
+          {error ? (
+            <View style={styles.errorBox}>
+              <Feather name="alert-triangle" size={20} color={RED} />
+              <Text style={styles.errorText}>Təlimlər yüklənə bilmədi</Text>
+            </View>
+          ) : courses.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Feather name="book" size={32} color={MUTED} />
+              <Text style={styles.emptyText}>Təlim tapılmadı</Text>
+            </View>
+          ) : (
+            courses.map(c => <CourseCard key={c.id} course={c} onPress={() => handlePress(c)} />)
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -194,7 +216,6 @@ const styles = StyleSheet.create({
     borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
     backgroundColor: 'rgba(0,212,200,0.06)',
   },
-  pillDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: TEAL },
   pillText: { color: TEAL, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
 
   list: { padding: 16, gap: 12 },
@@ -215,7 +236,6 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
     borderWidth: 1,
   },
-  badgeDot:  { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: 12, fontWeight: '600' },
 
   title:   { color: WHITE, fontSize: 15, fontWeight: '600', lineHeight: 22 },
@@ -235,14 +255,15 @@ const styles = StyleSheet.create({
   statSep:   { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.1)' },
 
   actionBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     borderRadius: 10, borderWidth: 1,
-    paddingVertical: 10, alignItems: 'center',
+    paddingVertical: 10,
     marginTop: 4,
   },
   actionText: { fontSize: 13, fontWeight: '700' },
 
-  errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' },
+  errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', alignItems: 'center', gap: 8 },
   errorText: { color: RED, textAlign: 'center', fontSize: 13 },
-  emptyBox:  { padding: 40, alignItems: 'center' },
+  emptyBox:  { padding: 40, alignItems: 'center', gap: 8 },
   emptyText: { color: MUTED, fontSize: 14 },
 });

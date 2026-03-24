@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, Animated,
   ActivityIndicator, RefreshControl, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { api, CertItem } from '@/services/api';
+import OceanWaves from '@/components/ocean-waves';
 
 const BG     = '#060d1a';
 const TEAL   = '#00d4c8';
@@ -12,6 +14,7 @@ const WHITE  = '#FFFFFF';
 const MUTED  = 'rgba(255,255,255,0.45)';
 const RED    = '#EF4444';
 const YELLOW = '#EAB308';
+const BLUE   = '#0057B7';
 
 type Filter = 'all' | 'active' | 'expired';
 
@@ -74,6 +77,8 @@ export default function CertificatesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState(false);
   const [filter, setFilter]         = useState<Filter>('all');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -91,6 +96,15 @@ export default function CertificatesScreen() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [loading]);
 
   const filtered = certs.filter(c => {
     const isUnlimited = c.days_label === 'Müddətsiz';
@@ -110,53 +124,57 @@ export default function CertificatesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topbar}>
-        <View>
-          <Text style={styles.title}>Sertifikatlar</Text>
-          <Text style={styles.subtitle}>{certs.length} sertifikat</Text>
-        </View>
-        <View style={styles.tealPill}>
-          <View style={styles.pillDot} />
-          <Text style={styles.pillText}>DDLA</Text>
-        </View>
-      </View>
-
-      {/* Filter tabs */}
-      <View style={styles.filterRow}>
-        {(['all', 'active', 'expired'] as Filter[]).map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-            onPress={() => setFilter(f)}
-          >
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-              {f === 'all' ? 'Hamısı' : f === 'active' ? 'Aktiv' : 'Bitmiş'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.list}
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
-        }
-      >
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>Sertifikatlar yüklənə bilmədi</Text>
+      <OceanWaves />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <View style={styles.topbar}>
+          <View>
+            <Text style={styles.title}>Sertifikatlar</Text>
+            <Text style={styles.subtitle}>{certs.length} sertifikat</Text>
           </View>
-        ) : filtered.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>Sertifikat tapılmadı</Text>
+          <View style={styles.tealPill}>
+            <Feather name="anchor" size={12} color={TEAL} />
+            <Text style={styles.pillText}>DDLA</Text>
           </View>
-        ) : (
-          filtered.map(cert => <CertCard key={cert.id} cert={cert} />)
-        )}
-        <View style={{ height: 32 }} />
-      </ScrollView>
+        </View>
+
+        <View style={styles.filterRow}>
+          {(['all', 'active', 'expired'] as Filter[]).map(f => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+              onPress={() => setFilter(f)}
+            >
+              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
+                {f === 'all' ? 'Hamısı' : f === 'active' ? 'Aktiv' : 'Bitmiş'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          contentInsetAdjustmentBehavior="automatic"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
+          }
+        >
+          {error ? (
+            <View style={styles.errorBox}>
+              <Feather name="alert-triangle" size={20} color={RED} />
+              <Text style={styles.errorText}>Sertifikatlar yüklənə bilmədi</Text>
+            </View>
+          ) : filtered.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Feather name="inbox" size={32} color={MUTED} />
+              <Text style={styles.emptyText}>Sertifikat tapılmadı</Text>
+            </View>
+          ) : (
+            filtered.map(cert => <CertCard key={cert.id} cert={cert} />)
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -178,7 +196,6 @@ const styles = StyleSheet.create({
     borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
     backgroundColor: 'rgba(0,212,200,0.06)',
   },
-  pillDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: TEAL },
   pillText: { color: TEAL, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
 
   filterRow: {
@@ -235,8 +252,8 @@ const styles = StyleSheet.create({
   dateValue: { color: WHITE, fontSize: 13, fontWeight: '600', marginTop: 3 },
   dateSep:   { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.1)' },
 
-  errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' },
+  errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', alignItems: 'center', gap: 8 },
   errorText: { color: RED, textAlign: 'center', fontSize: 13 },
-  emptyBox:  { padding: 40, alignItems: 'center' },
+  emptyBox:  { padding: 40, alignItems: 'center', gap: 8 },
   emptyText: { color: MUTED, fontSize: 14 },
 });

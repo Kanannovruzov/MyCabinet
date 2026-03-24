@@ -4,6 +4,7 @@ import {
   ActivityIndicator, TouchableOpacity, RefreshControl, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { api } from '@/services/api';
 
@@ -103,7 +104,7 @@ export default function DocumentsScreen() {
           <View style={styles.card}>
             <View style={styles.cardLeft}>
               <View style={styles.iconBox}>
-                <Text style={styles.icon}>📄</Text>
+                <Feather name="file-text" size={20} color="#00d4c8" />
               </View>
               <View style={styles.cardInfo}>
                 <Text style={styles.docName} numberOfLines={2}>{doc.code || doc.name}</Text>

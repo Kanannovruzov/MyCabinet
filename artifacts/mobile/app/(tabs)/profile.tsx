@@ -4,9 +4,11 @@ import {
   ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { api, ProfileItem } from '@/services/api';
+import OceanWaves from '@/components/ocean-waves';
 
 const BG    = '#060d1a';
 const BG2   = '#0a1628';
@@ -58,7 +60,7 @@ function Section({ title, icon, children }: { title: string; icon: string; child
       <View style={styles.sectionHeader}>
         <View style={styles.sectionLine} />
         <View style={styles.sectionBadge}>
-          <Text style={{ fontSize: 12 }}>{icon}</Text>
+          <Feather name={icon as any} size={12} color={TEAL} />
           <Text style={styles.sectionTitle}>{title}</Text>
         </View>
         <View style={styles.sectionLine} />
@@ -128,6 +130,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.bgGlow1} />
       <View style={styles.bgGlow2} />
+      <OceanWaves />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -167,33 +170,33 @@ export default function ProfileScreen() {
 
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/documents')}>
-            <Text style={styles.actionIcon}>📄</Text>
+            <Feather name="file-text" size={20} color={TEAL} />
             <Text style={styles.actionLabel}>Sənədlər</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/notifications')}>
-            <Text style={styles.actionIcon}>🔔</Text>
+            <Feather name="bell" size={20} color={TEAL} />
             <Text style={styles.actionLabel}>Bildirişlər</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/feedback')}>
-            <Text style={styles.actionIcon}>✉️</Text>
+            <Feather name="mail" size={20} color={TEAL} />
             <Text style={styles.actionLabel}>Müraciət</Text>
           </TouchableOpacity>
         </View>
 
         {p ? (
           <>
-            <Section title="Şəxsi məlumatlar" icon="👤">
+            <Section title="Şəxsi məlumatlar" icon="user">
               <InfoRow label="Cins" value={p.gender} />
               <InfoRow label="Doğum tarixi" value={p.dob} />
               <InfoRow label="FIN" value={p.fin || pin} />
               <InfoRow label="İnd. nömrəsi" value={p.ind_num} />
             </Section>
-            <Section title="Əlaqə" icon="📞">
+            <Section title="Əlaqə" icon="phone">
               <InfoRow label="Email" value={p.email} />
               <InfoRow label="Telefon 1" value={p.phone1} />
               <InfoRow label="Telefon 2" value={p.phone2} />
             </Section>
-            <Section title="Dənizçi məlumatları" icon="⚓">
+            <Section title="Dənizçi məlumatları" icon="anchor">
               <InfoRow label="Müəssisə" value={p.org} />
               <InfoRow label="Şəhadətnamə" value={p.seaman_id} />
               <InfoRow label="Verilmə" value={p.seaman_issue} />
@@ -202,7 +205,7 @@ export default function ProfileScreen() {
           </>
         ) : (
           <View style={styles.noProfileBox}>
-            <Text style={{ fontSize: 32 }}>📋</Text>
+            <Feather name="clipboard" size={32} color={MUTED} />
             <Text style={styles.noProfileText}>Profil məlumatları bazadan yüklənir</Text>
           </View>
         )}
