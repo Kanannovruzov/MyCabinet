@@ -165,8 +165,8 @@ export default function ProfileScreen() {
         {p ? (
           <>
             <Section title="Şəxsi məlumatlar" icon="👤">
-              <InfoRow label="Ad Soyad (AZ)" value={p.name_az} />
-              <InfoRow label="Ad Soyad (EN)" value={p.name_en} />
+              <InfoRow label="Ad Soyad (AZ)" value={displayName} />
+              <InfoRow label="Ad Soyad (EN)" value={displayNameEn} />
               <InfoRow label="Cins" value={p.gender} />
               <InfoRow label="Doğum tarixi" value={p.dob} />
               <InfoRow label="FIN" value={p.fin || pin} />

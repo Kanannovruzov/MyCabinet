@@ -103,10 +103,7 @@ export default function LoginScreen() {
       if (res.ok) {
         const userPin = res.pin ?? trimmed;
         setAuth(userPin, {
-          nameAz: res.name_az,
-          nameEn: res.name_en,
           seamanId: res.seaman_id,
-          photoUrl: res.photo_url,
         });
         router.replace('/(tabs)');
       } else {
