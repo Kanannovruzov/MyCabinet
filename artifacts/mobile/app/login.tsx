@@ -98,11 +98,12 @@ export default function LoginScreen() {
     setFinError('');
     try {
       const res = await api.checkFin(trimmed);
-      if (res.ok && res.session && res.pin) {
-        setAuth(res.session, res.pin);
+      if (res.ok) {
+        const userPin = res.pin ?? trimmed;
+        setAuth(userPin, userPin);
         router.replace('/(tabs)');
       } else {
-        setFinError('Sizin kabinetiniz yoxdur. Zəhmət olmasa DDLA ilə əlaqə saxlayın.');
+        setFinError(res.msg || 'Sizin kabinetiniz yoxdur. Zəhmət olmasa DDLA ilə əlaqə saxlayın.');
       }
     } catch {
       setFinError('Şəbəkə xətası. Yenidən cəhd edin.');

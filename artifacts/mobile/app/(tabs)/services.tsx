@@ -55,9 +55,9 @@ export default function ServicesScreen() {
     try {
       const [svcRes, reqRes] = await Promise.all([
         api.services(),
-        fetch(`${BASE_URL}/api/services/requests`, {
-          headers: { 'X-Mobile': '1', 'X-Pin': pin ?? '', 'X-Session': session ?? '' },
-        }).then(r => r.json()),
+        fetch(`${BASE_URL}/mobile/services/requests`, {
+          headers: { 'X-Mobile': '1', 'X-Pin': pin ?? '' },
+        }).then(r => r.json()).catch(() => ({ ok: false, items: [] })),
       ]);
       if (svcRes.ok) setServices(svcRes.items);
       if (reqRes.ok) setRequests(reqRes.items ?? []);

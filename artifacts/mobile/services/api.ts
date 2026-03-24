@@ -14,14 +14,18 @@ export function clearApiAuth() {
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Mobile': '1',
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  if (_pin) headers['X-Pin'] = _pin;
+  if (_session) headers['X-Session'] = _session;
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Mobile': '1',
-      ...((_pin && _session) ? { 'X-Pin': _pin, 'X-Session': _session } : {}),
-      ...(options.headers || {}),
-    },
+    headers,
   });
   return res.json();
 }
@@ -78,37 +82,43 @@ export type ServiceItem = {
 
 export const api = {
   certificates: () =>
-    apiFetch<{ ok: boolean; items: CertItem[] }>('/api/certificates'),
+    apiFetch<{ ok: boolean; items: CertItem[] }>('/mobile/certificates'),
 
   certificate: (id: number) =>
-    apiFetch<{ ok: boolean; item: CertItem }>(`/api/certificates/${id}`),
+    apiFetch<{ ok: boolean; item: CertItem }>(`/mobile/certificates/${id}`),
 
   profile: (manId: number) =>
     apiFetch<{ ok: boolean; item: ProfileItem }>(`/welcome/profile/${manId}`),
 
   services: () =>
-    apiFetch<{ ok: boolean; items: ServiceItem[] }>('/api/services'),
+    apiFetch<{ ok: boolean; items: ServiceItem[] }>('/mobile/services'),
+
+  allServices: () =>
+    apiFetch<{ ok: boolean; items: ServiceItem[] }>('/mobile/getAllServices'),
 
   notifications: () =>
-    apiFetch<{ ok: boolean; items: NotifItem[]; unread: number }>('/api/notifications'),
+    apiFetch<{ ok: boolean; items: NotifItem[]; unread: number }>('/mobile/notifications'),
 
   markRead: (id: number) =>
-    apiFetch<{ ok: boolean }>(`/api/notifications/read/${id}`, { method: 'POST' }),
+    apiFetch<{ ok: boolean }>(`/mobile/notifications/read/${id}`, { method: 'POST' }),
 
   markAllRead: () =>
-    apiFetch<{ ok: boolean }>('/api/notifications/read-all', { method: 'POST' }),
+    apiFetch<{ ok: boolean }>('/mobile/notifications/read-all', { method: 'POST' }),
 
   feedbackSend: (topic: string, message: string) =>
-    apiFetch<{ ok: boolean; msg: string }>('/api/feedback/send', {
+    apiFetch<{ ok: boolean; msg: string }>('/mobile/feedback/send', {
       method: 'POST',
       body: JSON.stringify({ topic, message }),
     }),
 
   trainings: () =>
-    apiFetch<{ ok: boolean; items: any[] }>('/api/trainings'),
+    apiFetch<{ ok: boolean; items: any[] }>('/mobile/trainings'),
+
+  documents: () =>
+    apiFetch<{ ok: boolean; items: any[] }>('/mobile/documents'),
 
   checkFin: (fin: string) =>
-    apiFetch<{ ok: boolean; session?: string; pin?: string; msg?: string }>('/api/auth/check-fin', {
+    apiFetch<{ ok: boolean; pin?: string; msg?: string }>('/mobile/check-fin', {
       method: 'POST',
       body: JSON.stringify({ fin }),
     }),

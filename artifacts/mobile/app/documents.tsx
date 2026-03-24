@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useAuth } from '@/context/auth';
+import { api } from '@/services/api';
 
 const BASE_URL = 'https://seafarer.ddla.gov.az';
 const BG    = '#060d1a';
@@ -23,7 +23,6 @@ type DocItem = {
 };
 
 export default function DocumentsScreen() {
-  const { pin, session } = useAuth();
   const [docs, setDocs]             = useState<DocItem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,13 +32,10 @@ export default function DocumentsScreen() {
     if (!quiet) setLoading(true);
     setError(false);
     try {
-      const res = await fetch(`${BASE_URL}/dataUploadAPdf`, {
-        headers: { 'X-Mobile': '1', 'X-Pin': pin ?? '', 'X-Session': session ?? '' },
-      });
-      const data = await res.json();
+      const data = await api.documents();
       if (data.ok) {
         setDocs(
-          data.items.map((r: any) => ({
+          (data.items ?? []).map((r: any) => ({
             id:      r.id,
             code:    r.code,
             date:    r.date,
