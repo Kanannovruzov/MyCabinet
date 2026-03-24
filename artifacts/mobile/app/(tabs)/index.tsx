@@ -306,75 +306,59 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Notification list modal */}
-      <Modal visible={showNotifs} animationType="slide" transparent>
-        <Pressable style={nStyles.overlay} onPress={() => setShowNotifs(false)}>
-          <Pressable style={nStyles.sheet} onPress={() => {}}>
-            <View style={nStyles.handle} />
-            <View style={nStyles.sheetHeader}>
-              <Text style={nStyles.sheetTitle}>Bildirişlər</Text>
-              {unread > 0 && <Text style={nStyles.unreadLabel}>{unread} oxunmamış</Text>}
-              <TouchableOpacity onPress={() => setShowNotifs(false)} style={nStyles.closeBtn}>
-                <Text style={nStyles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
+      <Modal visible={showNotifs} animationType="slide" transparent={false}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+          <View style={nStyles.sheetHeader}>
+            <Text style={nStyles.sheetTitle}>Bildirişlər</Text>
+            {unread > 0 && <Text style={nStyles.unreadLabel}>{unread} oxunmamış</Text>}
+            <TouchableOpacity onPress={() => setShowNotifs(false)} style={nStyles.closeBtn}>
+              <Text style={nStyles.closeBtnText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {notifs.length === 0 ? (
+            <View style={nStyles.emptyWrap}>
+              <Text style={{ fontSize: 28 }}>🔕</Text>
+              <Text style={nStyles.emptyText}>Bildiriş yoxdur</Text>
             </View>
-            {notifs.length === 0 ? (
-              <View style={nStyles.emptyWrap}>
-                <Text style={{ fontSize: 28 }}>🔕</Text>
-                <Text style={nStyles.emptyText}>Bildiriş yoxdur</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={notifs}
-                keyExtractor={i => String(i.id)}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                renderItem={({ item }) => {
-                  const isUnread = item.is_read === 0;
-                  return (
-                    <TouchableOpacity
-                      style={[nStyles.notifItem, isUnread && nStyles.notifItemUnread]}
-                      activeOpacity={0.7}
-                      onPress={async () => {
-                        if (isUnread) {
-                          api.markRead(item.id).catch(() => {});
-                          setNotifs(prev => prev.map(n => n.id === item.id ? { ...n, is_read: 1 } : n));
-                          setUnread(prev => Math.max(0, prev - 1));
-                        }
-                        setSelectedNotif(item);
-                      }}
-                    >
-                      {isUnread && <View style={nStyles.dot} />}
-                      <View style={{ flex: 1 }}>
-                        <Text style={[nStyles.notifTitle, isUnread && { color: WHITE }]} numberOfLines={2}>{item.title}</Text>
-                        {!!item.body && <Text style={nStyles.notifBody} numberOfLines={2}>{item.body}</Text>}
-                        <Text style={nStyles.notifDate}>{item.created_at}</Text>
-                      </View>
-                      <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 18 }}>›</Text>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Notification detail modal */}
-      <Modal visible={!!selectedNotif} animationType="fade" transparent>
-        <Pressable style={nStyles.detailOverlay} onPress={() => setSelectedNotif(null)}>
-          <Pressable style={nStyles.detailBox} onPress={() => {}}>
-            <View style={nStyles.detailHeader}>
-              <Text style={nStyles.detailTitle}>{selectedNotif?.title}</Text>
-              <TouchableOpacity onPress={() => setSelectedNotif(null)}>
-                <Text style={nStyles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-              <Text style={nStyles.detailBody}>{selectedNotif?.body}</Text>
-            </ScrollView>
-            <Text style={nStyles.detailDate}>{selectedNotif?.created_at}</Text>
-          </Pressable>
-        </Pressable>
+          ) : (
+            <FlatList
+              data={notifs}
+              keyExtractor={i => String(i.id)}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+              renderItem={({ item }) => {
+                const isUnread = item.is_read === 0;
+                const isExpanded = selectedNotif?.id === item.id;
+                return (
+                  <TouchableOpacity
+                    style={[nStyles.notifItem, isUnread && nStyles.notifItemUnread]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      if (isUnread) {
+                        api.markRead(item.id).catch(() => {});
+                        setNotifs(prev => prev.map(n => n.id === item.id ? { ...n, is_read: 1 } : n));
+                        setUnread(prev => Math.max(0, prev - 1));
+                      }
+                      setSelectedNotif(isExpanded ? null : item);
+                    }}
+                  >
+                    {isUnread && <View style={nStyles.dot} />}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[nStyles.notifTitle, isUnread && { color: WHITE }]}>{item.title}</Text>
+                      {isExpanded && !!item.body ? (
+                        <Text style={nStyles.notifBodyFull}>{item.body}</Text>
+                      ) : (
+                        !!item.body && <Text style={nStyles.notifBody} numberOfLines={2}>{item.body}</Text>
+                      )}
+                      <Text style={nStyles.notifDate}>{item.created_at}</Text>
+                    </View>
+                    <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 18 }}>{isExpanded ? '‹' : '›'}</Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -629,23 +613,6 @@ const nStyles = StyleSheet.create({
   },
   notifTitle: { color: MUTED, fontSize: 14, fontWeight: '600', lineHeight: 20 },
   notifBody: { color: 'rgba(255,255,255,0.35)', fontSize: 12, lineHeight: 18, marginTop: 3 },
+  notifBodyFull: { color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 22, marginTop: 8 },
   notifDate: { color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 4 },
-
-  detailOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center', alignItems: 'center', padding: 24,
-  },
-  detailBox: {
-    backgroundColor: BG2, borderRadius: 20, width: '100%',
-    borderWidth: 1, borderColor: 'rgba(0,212,200,0.15)',
-    padding: 20,
-  },
-  detailHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    marginBottom: 16, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(0,212,200,0.1)',
-  },
-  detailTitle: { color: WHITE, fontSize: 16, fontWeight: '700', flex: 1, lineHeight: 22, marginRight: 10 },
-  detailBody: { color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 22 },
-  detailDate: { color: 'rgba(255,255,255,0.25)', fontSize: 11, marginTop: 14, textAlign: 'right' },
 });

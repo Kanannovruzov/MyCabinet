@@ -13,17 +13,22 @@ const WHITE = '#FFFFFF';
 const MUTED = 'rgba(255,255,255,0.45)';
 const RED   = '#EF4444';
 
-function NotifCard({ item, onPress }: { item: NotifItem; onPress: () => void }) {
+function NotifCard({ item, onPress, expanded }: { item: NotifItem; onPress: () => void; expanded: boolean }) {
   const isUnread = item.is_read === 0;
 
   return (
-    <TouchableOpacity style={[styles.card, isUnread && styles.cardUnread]} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity style={[styles.card, isUnread && styles.cardUnread, expanded && styles.cardExpanded]} onPress={onPress} activeOpacity={0.75}>
       {isUnread && <View style={styles.unreadDot} />}
       <View style={styles.cardBody}>
-        <Text style={[styles.cardTitle, isUnread && { color: WHITE }]} numberOfLines={2}>{item.title}</Text>
-        {!!item.body && <Text style={styles.cardBody2} numberOfLines={3}>{item.body}</Text>}
+        <Text style={[styles.cardTitle, isUnread && { color: WHITE }]}>{item.title}</Text>
+        {expanded && !!item.body ? (
+          <Text style={styles.cardBodyFull}>{item.body}</Text>
+        ) : (
+          !!item.body && <Text style={styles.cardBody2} numberOfLines={2}>{item.body}</Text>
+        )}
         <Text style={styles.cardDate}>{item.created_at}</Text>
       </View>
+      <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 18, alignSelf: 'center' }}>{expanded ? '‹' : '›'}</Text>
     </TouchableOpacity>
   );
 }
@@ -33,6 +38,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -53,10 +59,10 @@ export default function NotificationsScreen() {
 
   const handlePress = async (item: NotifItem) => {
     if (item.is_read === 0) {
-      await api.markRead(item.id);
+      api.markRead(item.id).catch(() => {});
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_read: 1 } : i));
     }
-    if (item.url) Linking.openURL(item.url);
+    setExpandedId(prev => prev === item.id ? null : item.id);
   };
 
   const markAll = async () => {
@@ -106,7 +112,7 @@ export default function NotificationsScreen() {
             <View style={styles.emptyBox}><Text style={styles.emptyText}>Bildiriş tapılmadı</Text></View>
           )
         }
-        renderItem={({ item }) => <NotifCard item={item} onPress={() => handlePress(item)} />}
+        renderItem={({ item }) => <NotifCard item={item} expanded={expandedId === item.id} onPress={() => handlePress(item)} />}
       />
     </SafeAreaView>
   );
@@ -149,9 +155,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     shadowColor: TEAL, shadowOpacity: 1, shadowRadius: 4,
   },
+  cardExpanded: { borderColor: 'rgba(0,212,200,0.25)' },
   cardBody:  { flex: 1 },
   cardTitle: { color: MUTED, fontSize: 14, fontWeight: '600', lineHeight: 20 },
   cardBody2: { color: MUTED, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  cardBodyFull: { color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 22, marginTop: 8 },
   cardDate:  { color: 'rgba(255,255,255,0.25)', fontSize: 11, marginTop: 8 },
 
   errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12 },
