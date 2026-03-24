@@ -80,12 +80,8 @@ export default function ProfileScreen() {
     );
   };
 
-  const pAdiAz = profile?.ADI_AZ || profile?.adi_az || '';
-  const pSoyadiAz = profile?.SOYADI_AZ || profile?.soyadi_az || '';
-  const pAdiEn = profile?.ADI || profile?.adi || '';
-  const pSoyadiEn = profile?.SOYADI || profile?.soyadi || '';
-  const profileNameAz = (pAdiAz && pSoyadiAz) ? `${pAdiAz} ${pSoyadiAz}` : profile?.name_az;
-  const profileNameEn = (pAdiEn && pSoyadiEn) ? `${pAdiEn} ${pSoyadiEn}` : profile?.name_en;
+  const profileNameAz = profile?.name_azD || profile?.name_az;
+  const profileNameEn = profile?.name_enD || profile?.name_en;
 
   const displayName = nameAz || profileNameAz || `PIN: ${pin}`;
   const displayNameEn = nameEn || profileNameEn;

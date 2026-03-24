@@ -78,16 +78,8 @@ export default function HomeScreen() {
       if (notifRes.ok) setUnread(notifRes.unread);
       if (profileRes.ok && profileRes.item) {
         const p = profileRes.item;
-        const adiAz = p.ADI_AZ || p.adi_az || '';
-        const soyadiAz = p.SOYADI_AZ || p.soyadi_az || '';
-        const adiEn = p.ADI || p.adi || '';
-        const soyadiEn = p.SOYADI || p.soyadi || '';
-        const shortNameAz = (adiAz && soyadiAz)
-          ? `${adiAz} ${soyadiAz}`
-          : p.name_az;
-        const shortNameEn = (adiEn && soyadiEn)
-          ? `${adiEn} ${soyadiEn}`
-          : p.name_en;
+        const shortNameAz = p.name_azD || p.name_az;
+        const shortNameEn = p.name_enD || p.name_en;
         const id = p.unikal || p.colID;
         setProfileName(shortNameAz);
         if (id) {
