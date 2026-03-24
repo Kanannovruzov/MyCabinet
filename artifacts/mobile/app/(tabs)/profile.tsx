@@ -57,8 +57,9 @@ export default function ProfileScreen() {
       const res = await api.profile();
       if (res.ok && res.item) {
         setProfile(res.item);
-        if (res.item.unikal) {
-          setUserPhoto(`https://seafarer.ddla.gov.az/image/${res.item.unikal}`);
+        const id = res.item.unikal || res.item.colID;
+        if (id) {
+          setUserPhoto(`https://seafarer.ddla.gov.az/image/${id}`);
         }
       }
     } catch {}
@@ -79,9 +80,16 @@ export default function ProfileScreen() {
     );
   };
 
-  const displayName = nameAz || profile?.name_az || `PIN: ${pin}`;
-  const displayNameEn = nameEn || profile?.name_en;
-  const initials = (nameAz || profile?.name_az || pin || '??')
+  const pAdiAz = profile?.ADI_AZ || profile?.adi_az || '';
+  const pSoyadiAz = profile?.SOYADI_AZ || profile?.soyadi_az || '';
+  const pAdiEn = profile?.ADI || profile?.adi || '';
+  const pSoyadiEn = profile?.SOYADI || profile?.soyadi || '';
+  const profileNameAz = (pAdiAz && pSoyadiAz) ? `${pAdiAz} ${pSoyadiAz}` : profile?.name_az;
+  const profileNameEn = (pAdiEn && pSoyadiEn) ? `${pAdiEn} ${pSoyadiEn}` : profile?.name_en;
+
+  const displayName = nameAz || profileNameAz || `PIN: ${pin}`;
+  const displayNameEn = nameEn || profileNameEn;
+  const initials = (displayName || '??')
     .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
 
   if (loading) {

@@ -48,14 +48,18 @@ export type ProfileItem = {
   unikal: number;
   name_az: string;
   name_en: string;
+  ADI_AZ?: string;
+  SOYADI_AZ?: string;
+  ADI?: string;
+  SOYADI?: string;
   adi_az?: string;
   soyadi_az?: string;
-  ata_adi?: string;
   adi?: string;
   soyadi?: string;
   gender: string;
   dob: string;
   ind_num: string;
+  IND_NUM?: string;
   email: string;
   phone1: string;
   phone2: string;
@@ -66,6 +70,8 @@ export type ProfileItem = {
   seaman_id: string;
   seaman_issue: string;
   seaman_valid: string;
+  colID?: number;
+  [key: string]: any;
 };
 
 export type NotifItem = {

@@ -78,22 +78,27 @@ export default function HomeScreen() {
       if (notifRes.ok) setUnread(notifRes.unread);
       if (profileRes.ok && profileRes.item) {
         const p = profileRes.item;
-        const shortNameAz = (p.adi_az && p.soyadi_az)
-          ? `${p.adi_az} ${p.soyadi_az}`
+        const adiAz = p.ADI_AZ || p.adi_az || '';
+        const soyadiAz = p.SOYADI_AZ || p.soyadi_az || '';
+        const adiEn = p.ADI || p.adi || '';
+        const soyadiEn = p.SOYADI || p.soyadi || '';
+        const shortNameAz = (adiAz && soyadiAz)
+          ? `${adiAz} ${soyadiAz}`
           : p.name_az;
-        const shortNameEn = (p.adi && p.soyadi)
-          ? `${p.adi} ${p.soyadi}`
+        const shortNameEn = (adiEn && soyadiEn)
+          ? `${adiEn} ${soyadiEn}`
           : p.name_en;
+        const id = p.unikal || p.colID;
         setProfileName(shortNameAz);
-        if (p.unikal) {
-          setProfilePhoto(`https://seafarer.ddla.gov.az/image/${p.unikal}`);
+        if (id) {
+          setProfilePhoto(`https://seafarer.ddla.gov.az/image/${id}`);
         }
         if (pin) {
           setAuth(pin, {
             nameAz: shortNameAz,
             nameEn: shortNameEn,
-            seamanId: String(p.unikal),
-            photoUrl: p.unikal ? `https://seafarer.ddla.gov.az/image/${p.unikal}` : undefined,
+            seamanId: String(id),
+            photoUrl: id ? `https://seafarer.ddla.gov.az/image/${id}` : undefined,
           });
         }
       }
