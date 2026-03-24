@@ -93,27 +93,66 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 ### `artifacts/mobile` (`@workspace/mobile`)
 
-Expo React Native mobile app — "DDLA MyCabinet" (Seafarer Personal Cabinet).
+Expo React Native mobile app — "DDLA MyCabinet" (Seafarer Personal Cabinet). **Legacy — replaced by Flutter version below.**
 
-- Backend API: `https://seafarer.ddla.gov.az` — mobile routes under `/mobile/` with `mobileAuth` filter
-- Auth headers: `X-Mobile: 1`, `X-Pin: {pin}`, `X-Session: {session}`
-- FIN login: `POST /mobile/check-fin`
-- Profile: `GET /mobile/profile`
-- Photo URL: `https://seafarer.ddla.gov.az/image/{unikal}`
-- Theme system: `context/theme.tsx` with DARK/LIGHT color schemes, full color tokens, persisted via AsyncStorage
-- ThemeProvider wraps AuthProvider in `_layout.tsx`; use `useTheme()` to get `colors`, `isDark`, `toggleTheme`, `biometricEnabled`, `setBiometricEnabled`
-- Color tokens (DARK): BG `#060d1a`, surface `#0a1628`, teal `#00d4c8`, blue `#0057B7`; LIGHT has white bg and adjusted teal/colors
-- OceanWaves component: `components/ocean-waves.tsx` — animated SVG sinusoidal waves using react-native-svg
-- DDLA logo: `assets/images/ddla-logo.png` (circular DDLA emblem), `assets/images/mycabinet-brand.png`
-- Key screens: splash, login, home tabs (certificates, trainings, services, profile), notifications, documents, feedback, settings
-- Features: animated splash, SVG ocean waves, smooth page transitions (slide_from_right/fade_from_bottom), tab animation ('shift'), pulsing online dots, glass-morphism cards
-- Settings screen: PIN passcode (4-digit with numpad modal) + biometric (face/fingerprint, grayed out if unsupported) + dark/light mode switch
-- PIN stored securely via expo-secure-store (native) / AsyncStorage (web fallback)
-- Logo preloading: expo-asset preloads images before splash/login animations start
-- Back buttons: all secondary screens use `<Feather name="arrow-left" />` in a styled rounded box
-- Profile: "ID: {seaman_id}" pill with Feather hash icon; Settings accessible from profile gear button
-- AsyncStorage keys: `session`, `pin`, `nameAz`, `nameEn`, `seamanId`, `photoUrl`, `theme`, `biometric`, `pinEnabled`
-- SecureStore keys: `appPin` (4-digit app passcode)
+### `flutter_app/` (Flutter/Dart rewrite)
+
+Full Flutter rewrite of DDLA MyCabinet — Seafarer Personal Cabinet.
+
+- **Backend API**: `https://seafarer.ddla.gov.az` — mobile routes under `/mobile/` with `mobileAuth` filter
+- **Auth headers**: `X-Mobile: 1`, `X-Pin: {pin}`, `X-Session: {session}`
+- **State management**: Provider (`ChangeNotifier`) — AuthProvider, ThemeProvider
+- **Storage**: `shared_preferences` (theme, biometric, pinEnabled), `flutter_secure_storage` (appPin)
+- **Dependencies**: http, provider, shared_preferences, flutter_secure_storage, local_auth, url_launcher, feather_icons, google_fonts
+- **Color tokens (Dark)**: BG `#060D1A`, surface `#0A1628`, teal `#00D4C8`, blue `#0057B7`; Light has white bg
+
+#### Structure
+```
+flutter_app/
+├── pubspec.yaml
+├── analysis_options.yaml
+├── assets/images/          # ddla-logo.png, mycabinet-brand.png
+└── lib/
+    ├── main.dart           # App entry, MaterialApp, MainTabScreen (bottom nav)
+    ├── theme/colors.dart   # AppColors with dark/light palettes
+    ├── services/api.dart   # ApiService singleton, all endpoints
+    ├── providers/
+    │   ├── auth_provider.dart    # Session, PIN, profile persistence
+    │   └── theme_provider.dart   # Dark/light, biometric, PIN lock
+    ├── widgets/
+    │   └── ocean_waves.dart      # Animated wave CustomPainter
+    └── screens/
+        ├── splash_screen.dart       # Animated splash with rings + glow
+        ├── login_screen.dart        # myGov OAuth + FIN code entry
+        ├── home_screen.dart         # Dashboard with stats, actions grid, cert preview
+        ├── certificates_screen.dart # Cert list with filter (All/Active/Expired)
+        ├── trainings_screen.dart    # Course list with status badges
+        ├── services_screen.dart     # Services catalog + My Requests tabs
+        ├── profile_screen.dart      # Personal info + logout
+        ├── notifications_screen.dart # Notification list with mark-read
+        ├── documents_screen.dart    # Document list with view links
+        ├── feedback_screen.dart     # Contact form with topic selection
+        └── settings_screen.dart     # PIN lock modal, biometric toggle, theme switch
+```
+
+#### Key Features
+- Animated splash with pulsing rings and ocean waves
+- myGov OAuth + FIN code dual login
+- 5-tab bottom navigation (Home, Certificates, Trainings, Services, Profile)
+- Certificate filtering (All/Active/Expired) with progress bars
+- Training courses with status (Not started/In progress/Completed/Locked)
+- Services catalog + request tracking with status colors
+- 4-digit PIN lock with numpad modal + biometric auth
+- Dark/Light theme with full color system
+- DDLA branded pills and glass-morphism cards
+- Pull-to-refresh on all data screens
+
+#### Running
+```bash
+cd flutter_app
+flutter pub get
+flutter run
+```
 
 ### `scripts` (`@workspace/scripts`)
 
