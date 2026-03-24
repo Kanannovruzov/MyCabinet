@@ -158,7 +158,7 @@ export default function HomeScreen() {
               <Text style={styles.nameText}>{displayName}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/notifications')}>
+          <TouchableOpacity style={styles.notifBtn} onPress={() => router.navigate('/notifications')}>
             <Text style={styles.notifIcon}>🔔</Text>
             {unread > 0 && (
               <View style={styles.badge}>
@@ -259,7 +259,7 @@ export default function HomeScreen() {
             <Text style={{ fontSize: 16 }}>✉️</Text>
             <Text style={styles.miniBtnText}>Müraciət</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.miniBtn} onPress={() => router.push('/notifications')}>
+          <TouchableOpacity style={styles.miniBtn} onPress={() => router.navigate('/notifications')}>
             <Text style={{ fontSize: 16 }}>🔔</Text>
             <Text style={styles.miniBtnText}>Bildirişlər</Text>
             {unread > 0 && <View style={styles.miniBadge}><Text style={styles.miniBadgeText}>{unread}</Text></View>}
