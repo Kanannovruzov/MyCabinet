@@ -49,12 +49,17 @@ export default function ProfileScreen() {
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [userPhoto, setUserPhoto] = useState<string | null>(photoUrl);
+
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
       const res = await api.profile();
       if (res.ok && res.item) {
         setProfile(res.item);
+        if (res.item.unikal) {
+          setUserPhoto(`https://seafarer.ddla.gov.az/image/${res.item.unikal}`);
+        }
       }
     } catch {}
     setLoading(false);
@@ -105,8 +110,8 @@ export default function ProfileScreen() {
         <View style={styles.avatarSection}>
           <View style={styles.avatarOuter}>
             <View style={styles.avatarRing}>
-              {photoUrl ? (
-                <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+              {userPhoto ? (
+                <Image source={{ uri: userPhoto }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarFallback}>
                   <Text style={styles.avatarText}>{initials}</Text>

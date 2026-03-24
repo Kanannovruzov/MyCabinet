@@ -79,8 +79,16 @@ export default function HomeScreen() {
       if (profileRes.ok && profileRes.item) {
         const p = profileRes.item;
         setProfileName(p.name_az);
+        if (p.unikal) {
+          setProfilePhoto(`https://seafarer.ddla.gov.az/image/${p.unikal}`);
+        }
         if (pin && !nameAz && p.name_az) {
-          setAuth(pin, { nameAz: p.name_az, nameEn: p.name_en });
+          setAuth(pin, {
+            nameAz: p.name_az,
+            nameEn: p.name_en,
+            seamanId: String(p.unikal),
+            photoUrl: p.unikal ? `https://seafarer.ddla.gov.az/image/${p.unikal}` : undefined,
+          });
         }
       }
     } catch {
