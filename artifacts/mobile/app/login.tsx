@@ -153,9 +153,7 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.topBar}>
-              <View style={styles.topLogoWrap}>
-                <Image source={require('@/assets/images/ddla-logo.png')} style={styles.topLogo} />
-              </View>
+              <Image source={require('@/assets/images/mycabinet-brand.png')} style={styles.topBrand} resizeMode="contain" />
               <View style={styles.topBadge}>
                 <View style={styles.liveDot} />
                 <Text style={styles.liveText}>Rəsmi Platforma</Text>
@@ -333,8 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingTop: 8,
   },
-  topLogoWrap: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
-  topLogo: { width: 40, height: 40 },
+  topBrand: { width: 110, height: 36 },
   topBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
