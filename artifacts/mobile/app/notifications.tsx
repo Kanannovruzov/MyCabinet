@@ -1,44 +1,56 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList,
-  ActivityIndicator, TouchableOpacity, RefreshControl, Linking,
+  View, Text, StyleSheet, FlatList, Animated,
+  ActivityIndicator, TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { api, NotifItem } from '@/services/api';
+import { useTheme } from '@/context/theme';
+import OceanWaves from '@/components/ocean-waves';
 
-const BG    = '#060d1a';
-const TEAL  = '#00d4c8';
-const WHITE = '#FFFFFF';
-const MUTED = 'rgba(255,255,255,0.45)';
-const RED   = '#EF4444';
-
-function NotifCard({ item, onPress, expanded }: { item: NotifItem; onPress: () => void; expanded: boolean }) {
+function NotifCard({ item, onPress, expanded, colors: C }: { item: NotifItem; onPress: () => void; expanded: boolean; colors: any }) {
   const isUnread = item.is_read === 0;
 
   return (
-    <TouchableOpacity style={[styles.card, isUnread && styles.cardUnread, expanded && styles.cardExpanded]} onPress={onPress} activeOpacity={0.75}>
-      {isUnread && <View style={styles.unreadDot} />}
-      <View style={styles.cardBody}>
-        <Text style={[styles.cardTitle, isUnread && { color: WHITE }]}>{item.title}</Text>
-        {expanded && !!item.body ? (
-          <Text style={styles.cardBodyFull}>{item.body}</Text>
-        ) : (
-          !!item.body && <Text style={styles.cardBody2} numberOfLines={2}>{item.body}</Text>
-        )}
-        <Text style={styles.cardDate}>{item.created_at}</Text>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        { backgroundColor: C.cardBg, borderColor: C.cardBorder },
+        isUnread && { borderColor: C.teal + '30', backgroundColor: C.glass },
+        expanded && { borderColor: C.teal + '40' },
+      ]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[styles.cardIcon, { backgroundColor: isUnread ? C.teal + '15' : C.cardBorder }]}>
+        <Feather name={isUnread ? 'bell' : 'check'} size={16} color={isUnread ? C.teal : C.muted} />
       </View>
-      <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 18, alignSelf: 'center' }}>{expanded ? '‹' : '›'}</Text>
+      <View style={styles.cardBody}>
+        <Text style={[styles.cardTitle, { color: isUnread ? C.text : C.muted }]}>{item.title}</Text>
+        {expanded && !!item.body ? (
+          <Text style={[styles.cardBodyFull, { color: C.text + 'cc' }]}>{item.body}</Text>
+        ) : (
+          !!item.body && <Text style={[styles.cardBody2, { color: C.muted }]} numberOfLines={2}>{item.body}</Text>
+        )}
+        <Text style={[styles.cardDate, { color: C.muted + '80' }]}>{item.created_at}</Text>
+      </View>
+      <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={C.muted} />
     </TouchableOpacity>
   );
 }
 
 export default function NotificationsScreen() {
-  const [items, setItems]           = useState<NotifItem[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const { colors } = useTheme();
+  const C = colors;
+  const [items, setItems] = useState<NotifItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]           = useState(false);
+  const [error, setError] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -57,6 +69,15 @@ export default function NotificationsScreen() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [loading]);
+
   const handlePress = async (item: NotifItem) => {
     if (item.is_read === 0) {
       api.markRead(item.id).catch(() => {});
@@ -72,8 +93,8 @@ export default function NotificationsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator color={TEAL} size="large" />
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: C.bg }]}>
+        <ActivityIndicator color={C.teal} size="large" />
       </SafeAreaView>
     );
   }
@@ -81,89 +102,104 @@ export default function NotificationsScreen() {
   const unread = items.filter(i => i.is_read === 0).length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Bildirişlər</Text>
-          {unread > 0 && <Text style={styles.subtitle}>{unread} oxunmamış</Text>}
-        </View>
-        {unread > 0 && (
-          <TouchableOpacity style={styles.markAllBtn} onPress={markAll}>
-            <Text style={styles.markAllText}>Hamısını oxu</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.bgGlow1, { backgroundColor: C.teal }]} />
+      <View style={[styles.bgGlow2, { backgroundColor: C.blue }]} />
+      <OceanWaves color={C.teal} />
 
-      <FlatList
-        data={items}
-        keyExtractor={i => String(i.id)}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
-        }
-        ListEmptyComponent={
-          error ? (
-            <View style={styles.errorBox}><Text style={styles.errorText}>Bildirişlər yüklənə bilmədi</Text></View>
-          ) : (
-            <View style={styles.emptyBox}><Text style={styles.emptyText}>Bildiriş tapılmadı</Text></View>
-          )
-        }
-        renderItem={({ item }) => <NotifCard item={item} expanded={expandedId === item.id} onPress={() => handlePress(item)} />}
-      />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <View style={[styles.topbar, { borderBottomColor: C.divider }]}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: C.glass, borderColor: C.glassBorder }]}>
+            <Feather name="arrow-left" size={22} color={C.teal} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: C.text }]}>Bildirişlər</Text>
+            {unread > 0 && <Text style={[styles.subtitle, { color: C.muted }]}>{unread} oxunmamış</Text>}
+          </View>
+          {unread > 0 && (
+            <TouchableOpacity style={[styles.markAllBtn, { borderColor: C.glassBorder, backgroundColor: C.glass }]} onPress={markAll}>
+              <Feather name="check-circle" size={14} color={C.teal} />
+              <Text style={[styles.markAllText, { color: C.teal }]}>Hamısını oxu</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <FlatList
+          data={items}
+          keyExtractor={i => String(i.id)}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={C.teal} />
+          }
+          ListEmptyComponent={
+            error ? (
+              <View style={[styles.errorBox, { backgroundColor: C.red + '10', borderColor: C.red + '30' }]}>
+                <Feather name="alert-triangle" size={20} color={C.red} />
+                <Text style={[styles.errorText, { color: C.red }]}>Bildirişlər yüklənə bilmədi</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyBox}>
+                <Feather name="bell-off" size={32} color={C.muted} />
+                <Text style={[styles.emptyText, { color: C.muted }]}>Bildiriş tapılmadı</Text>
+              </View>
+            )
+          }
+          renderItem={({ item }) => <NotifCard item={item} expanded={expandedId === item.id} onPress={() => handlePress(item)} colors={C} />}
+        />
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  center:    { alignItems: 'center', justifyContent: 'center' },
-
+  container: { flex: 1 },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  bgGlow1: {
+    position: 'absolute', top: -60, right: -40,
+    width: 200, height: 200, borderRadius: 100, opacity: 0.04,
+  },
+  bgGlow2: {
+    position: 'absolute', bottom: 100, left: -30,
+    width: 160, height: 160, borderRadius: 80, opacity: 0.05,
+  },
   topbar: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(0,212,200,0.1)',
-    gap: 10,
+    borderBottomWidth: 1, gap: 10,
   },
-  backBtn:  { padding: 4 },
-  backText: { color: TEAL, fontSize: 28, fontWeight: '300', lineHeight: 28 },
-  title:    { color: WHITE, fontSize: 20, fontWeight: '700' },
-  subtitle: { color: MUTED, fontSize: 11, marginTop: 1 },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  title: { fontSize: 20, fontWeight: '700' },
+  subtitle: { fontSize: 11, marginTop: 1 },
   markAllBtn: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1, borderColor: 'rgba(0,212,200,0.3)',
-    backgroundColor: 'rgba(0,212,200,0.08)',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1,
   },
-  markAllText: { color: TEAL, fontSize: 12, fontWeight: '600' },
-
+  markAllText: { fontSize: 12, fontWeight: '600' },
   list: { padding: 16, gap: 10, paddingBottom: 32 },
-
   card: {
-    backgroundColor: '#0a1628',
-    borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
-    flexDirection: 'row', gap: 12,
+    borderRadius: 14, padding: 14,
+    borderWidth: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12,
   },
-  cardUnread: { borderColor: 'rgba(0,212,200,0.2)', backgroundColor: 'rgba(0,212,200,0.04)' },
-  unreadDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: TEAL,
-    marginTop: 4,
-    shadowColor: TEAL, shadowOpacity: 1, shadowRadius: 4,
+  cardIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', marginTop: 2,
   },
-  cardExpanded: { borderColor: 'rgba(0,212,200,0.25)' },
-  cardBody:  { flex: 1 },
-  cardTitle: { color: MUTED, fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  cardBody2: { color: MUTED, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  cardBodyFull: { color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 22, marginTop: 8 },
-  cardDate:  { color: 'rgba(255,255,255,0.25)', fontSize: 11, marginTop: 8 },
-
-  errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12 },
-  errorText: { color: RED, textAlign: 'center', fontSize: 13 },
-  emptyBox:  { padding: 40, alignItems: 'center' },
-  emptyText: { color: MUTED, fontSize: 14 },
+  cardBody: { flex: 1 },
+  cardTitle: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  cardBody2: { fontSize: 12, lineHeight: 18, marginTop: 4 },
+  cardBodyFull: { fontSize: 14, lineHeight: 22, marginTop: 8 },
+  cardDate: { fontSize: 11, marginTop: 8 },
+  errorBox: {
+    padding: 20, borderRadius: 12, borderWidth: 1,
+    alignItems: 'center', gap: 8,
+  },
+  errorText: { textAlign: 'center', fontSize: 13 },
+  emptyBox: { padding: 40, alignItems: 'center', gap: 8 },
+  emptyText: { fontSize: 14 },
 });

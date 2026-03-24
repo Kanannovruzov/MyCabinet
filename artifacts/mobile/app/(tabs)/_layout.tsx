@@ -1,6 +1,6 @@
 import { Tabs, Redirect } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
@@ -9,10 +9,7 @@ import { Feather, MaterialIcons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useAuth } from '@/context/auth';
-
-const BG       = '#060d1a';
-const TEAL     = '#00d4c8';
-const INACTIVE = 'rgba(255,255,255,0.3)';
+import { useTheme } from '@/context/theme';
 
 function NativeTabLayout() {
   return (
@@ -44,32 +41,37 @@ function NativeTabLayout() {
 function ClassicTabLayout() {
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarActiveTintColor: TEAL,
-        tabBarInactiveTintColor: INACTIVE,
+        tabBarActiveTintColor: colors.teal,
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.3)',
+        animation: 'shift',
         tabBarStyle: {
-          backgroundColor: isIOS ? 'transparent' : BG,
-          borderTopColor: 'rgba(0,212,200,0.15)',
+          backgroundColor: isIOS ? 'transparent' : colors.bg,
+          borderTopColor: colors.divider,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 64,
+          paddingBottom: 10,
+          paddingTop: 4,
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
+          letterSpacing: 0.3,
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill} />
           ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: BG }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.bg }]} />
           ) : null,
+        sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen

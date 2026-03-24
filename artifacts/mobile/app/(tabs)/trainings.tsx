@@ -7,17 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@/context/auth';
+import { useTheme } from '@/context/theme';
 import OceanWaves from '@/components/ocean-waves';
 
 const BASE_URL = 'https://seafarer.ddla.gov.az';
-const BG    = '#060d1a';
-const BG2   = '#0a1628';
-const TEAL  = '#00d4c8';
-const WHITE = '#FFFFFF';
-const MUTED = 'rgba(255,255,255,0.45)';
-const RED   = '#EF4444';
-const YELLOW = '#EAB308';
-const GREEN  = '#22C55E';
 
 type CourseItem = {
   id: number;
@@ -33,69 +26,70 @@ type CourseItem = {
   course_url: string;
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  not_started: { label: 'Başlanmayıb', color: MUTED, icon: 'circle' },
-  in_progress:  { label: 'Davam edir',  color: TEAL, icon: 'play-circle' },
-  completed:    { label: 'Tamamlanıb',  color: GREEN, icon: 'check-circle' },
-  locked:       { label: 'Kilidli',     color: MUTED, icon: 'lock' },
-  cooldown:     { label: 'Gözləmə',     color: YELLOW, icon: 'clock' },
+const STATUS_CONFIG: Record<string, { label: string; colorKey: string; icon: string }> = {
+  not_started: { label: 'Başlanmayıb', colorKey: 'muted', icon: 'circle' },
+  in_progress: { label: 'Davam edir', colorKey: 'teal', icon: 'play-circle' },
+  completed: { label: 'Tamamlanıb', colorKey: 'green', icon: 'check-circle' },
+  locked: { label: 'Kilidli', colorKey: 'muted', icon: 'lock' },
+  cooldown: { label: 'Gözləmə', colorKey: 'yellow', icon: 'clock' },
 };
 
-function CourseCard({ course, onPress }: { course: CourseItem; onPress: () => void }) {
-  const cfg    = STATUS_CONFIG[course.status] ?? STATUS_CONFIG.not_started;
+function CourseCard({ course, onPress, colors: C }: { course: CourseItem; onPress: () => void; colors: any }) {
+  const cfg = STATUS_CONFIG[course.status] ?? STATUS_CONFIG.not_started;
   const locked = course.status === 'locked' || course.status === 'cooldown';
+  const color = (C as any)[cfg.colorKey] || C.muted;
 
   return (
     <TouchableOpacity
-      style={[styles.card, { borderColor: cfg.color + '30' }, locked && styles.cardLocked]}
+      style={[styles.card, { backgroundColor: C.cardBg, borderColor: color + '30' }, locked && styles.cardLocked]}
       onPress={onPress}
       disabled={locked}
       activeOpacity={0.75}
     >
-      <View style={[styles.cardBar, { backgroundColor: locked ? 'rgba(255,255,255,0.1)' : cfg.color }]} />
+      <View style={[styles.cardBar, { backgroundColor: locked ? C.divider : color }]} />
       <View style={styles.cardBody}>
-        <View style={[styles.badge, { backgroundColor: cfg.color + '18', borderColor: cfg.color + '40' }]}>
-          <Feather name={cfg.icon as any} size={12} color={cfg.color} />
-          <Text style={[styles.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
+        <View style={[styles.badge, { backgroundColor: color + '18', borderColor: color + '40' }]}>
+          <Feather name={cfg.icon as any} size={12} color={color} />
+          <Text style={[styles.badgeText, { color }]}>{cfg.label}</Text>
         </View>
 
-        <Text style={[styles.title, locked && { opacity: 0.5 }]} numberOfLines={2}>
+        <Text style={[styles.courseTitle, { color: C.text }, locked && { opacity: 0.5 }]} numberOfLines={2}>
           {course.title}
         </Text>
-        {!!course.reference_code && <Text style={styles.refCode}>{course.reference_code}</Text>}
-        {!!course.description && <Text style={styles.desc} numberOfLines={2}>{course.description}</Text>}
-        {!!course.extra_note && <Text style={[styles.note, { color: cfg.color + 'cc' }]}>{course.extra_note}</Text>}
+        {!!course.reference_code && <Text style={[styles.refCode, { color: C.muted }]}>{course.reference_code}</Text>}
+        {!!course.description && <Text style={[styles.desc, { color: C.muted }]} numberOfLines={2}>{course.description}</Text>}
+        {!!course.extra_note && <Text style={[styles.note, { color: color + 'cc' }]}>{course.extra_note}</Text>}
 
-        <View style={styles.stats}>
+        <View style={[styles.stats, { backgroundColor: C.glass }]}>
           <View style={styles.statItem}>
-            <Text style={styles.statVal}>{course.module_count}</Text>
-            <Text style={styles.statLbl}>Modul</Text>
+            <Text style={[styles.statVal, { color: C.text }]}>{course.module_count}</Text>
+            <Text style={[styles.statLbl, { color: C.muted }]}>Modul</Text>
           </View>
-          <View style={styles.statSep} />
+          <View style={[styles.statSep, { backgroundColor: C.divider }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statVal}>{course.material_count}</Text>
-            <Text style={styles.statLbl}>Material</Text>
+            <Text style={[styles.statVal, { color: C.text }]}>{course.material_count}</Text>
+            <Text style={[styles.statLbl, { color: C.muted }]}>Material</Text>
           </View>
           {course.test_passed && (
             <>
-              <View style={styles.statSep} />
+              <View style={[styles.statSep, { backgroundColor: C.divider }]} />
               <View style={styles.statItem}>
-                <Text style={[styles.statVal, { color: GREEN }]}>
+                <Text style={[styles.statVal, { color: C.green }]}>
                   {course.test_score != null ? `${Math.round(course.test_score)}%` : '✓'}
                 </Text>
-                <Text style={styles.statLbl}>Test</Text>
+                <Text style={[styles.statLbl, { color: C.muted }]}>Test</Text>
               </View>
             </>
           )}
         </View>
 
         {!locked && (
-          <View style={[styles.actionBtn, { borderColor: cfg.color + '60', backgroundColor: cfg.color + '12' }]}>
+          <View style={[styles.actionBtn, { borderColor: color + '60', backgroundColor: color + '12' }]}>
             <Feather
               name={course.status === 'not_started' ? 'play' : course.status === 'completed' ? 'refresh-cw' : 'arrow-right'}
-              size={14} color={cfg.color}
+              size={14} color={color}
             />
-            <Text style={[styles.actionText, { color: cfg.color }]}>
+            <Text style={[styles.actionText, { color }]}>
               {course.status === 'not_started' ? 'Başla' : course.status === 'completed' ? 'Yenidən bax' : 'Davam et'}
             </Text>
           </View>
@@ -107,10 +101,12 @@ function CourseCard({ course, onPress }: { course: CourseItem; onPress: () => vo
 
 export default function TrainingsScreen() {
   const { pin, session } = useAuth();
-  const [courses, setCourses]       = useState<CourseItem[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const { colors } = useTheme();
+  const C = colors;
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]           = useState(false);
+  const [error, setError] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -151,24 +147,27 @@ export default function TrainingsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator color={TEAL} size="large" />
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: C.bg }]}>
+        <ActivityIndicator color={C.teal} size="large" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <OceanWaves />
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.bgGlow1, { backgroundColor: C.teal }]} />
+      <View style={[styles.bgGlow2, { backgroundColor: C.blue }]} />
+      <OceanWaves color={C.teal} />
+
       <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-        <View style={styles.topbar}>
+        <View style={[styles.topbar, { borderBottomColor: C.divider }]}>
           <View>
-            <Text style={styles.pageTitle}>Təlimlər</Text>
-            <Text style={styles.pageSubtitle}>{courses.length} kurs</Text>
+            <Text style={[styles.pageTitle, { color: C.text }]}>Təlimlər</Text>
+            <Text style={[styles.pageSubtitle, { color: C.muted }]}>{courses.length} kurs</Text>
           </View>
-          <View style={styles.tealPill}>
-            <Feather name="anchor" size={12} color={TEAL} />
-            <Text style={styles.pillText}>DDLA</Text>
+          <View style={[styles.tealPill, { borderColor: C.glassBorder, backgroundColor: C.glass }]}>
+            <Feather name="anchor" size={12} color={C.teal} />
+            <Text style={[styles.pillText, { color: C.teal }]}>DDLA</Text>
           </View>
         </View>
 
@@ -177,21 +176,21 @@ export default function TrainingsScreen() {
           contentContainerStyle={styles.list}
           contentInsetAdjustmentBehavior="automatic"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={C.teal} />
           }
         >
           {error ? (
-            <View style={styles.errorBox}>
-              <Feather name="alert-triangle" size={20} color={RED} />
-              <Text style={styles.errorText}>Təlimlər yüklənə bilmədi</Text>
+            <View style={[styles.errorBox, { backgroundColor: C.red + '10', borderColor: C.red + '25' }]}>
+              <Feather name="alert-triangle" size={20} color={C.red} />
+              <Text style={{ color: C.red, textAlign: 'center', fontSize: 13 }}>Təlimlər yüklənə bilmədi</Text>
             </View>
           ) : courses.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Feather name="book" size={32} color={MUTED} />
-              <Text style={styles.emptyText}>Təlim tapılmadı</Text>
+              <Feather name="book" size={32} color={C.muted} />
+              <Text style={{ color: C.muted, fontSize: 14 }}>Təlim tapılmadı</Text>
             </View>
           ) : (
-            courses.map(c => <CourseCard key={c.id} course={c} onPress={() => handlePress(c)} />)
+            courses.map(c => <CourseCard key={c.id} course={c} onPress={() => handlePress(c)} colors={C} />)
           )}
           <View style={{ height: 32 }} />
         </ScrollView>
@@ -201,69 +200,63 @@ export default function TrainingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  center:    { alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1 },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  bgGlow1: {
+    position: 'absolute', top: -80, right: -60,
+    width: 200, height: 200, borderRadius: 100, opacity: 0.04,
+  },
+  bgGlow2: {
+    position: 'absolute', bottom: 100, left: -40,
+    width: 160, height: 160, borderRadius: 80, opacity: 0.05,
+  },
   topbar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(0,212,200,0.1)',
+    borderBottomWidth: 1,
   },
-  pageTitle:    { color: WHITE, fontSize: 22, fontWeight: '700' },
-  pageSubtitle: { color: MUTED, fontSize: 12, marginTop: 2 },
+  pageTitle: { fontSize: 22, fontWeight: '700' },
+  pageSubtitle: { fontSize: 12, marginTop: 2 },
   tealPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: 'rgba(0,212,200,0.3)',
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: 'rgba(0,212,200,0.06)',
+    borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  pillText: { color: TEAL, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-
+  pillText: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
   list: { padding: 16, gap: 12 },
-
   card: {
     flexDirection: 'row',
-    backgroundColor: BG2,
-    borderRadius: 16, borderWidth: 1,
-    overflow: 'hidden',
+    borderRadius: 16, borderWidth: 1, overflow: 'hidden',
   },
   cardLocked: { opacity: 0.7 },
-  cardBar:    { width: 4 },
-  cardBody:   { flex: 1, padding: 16, gap: 8 },
-
+  cardBar: { width: 4 },
+  cardBody: { flex: 1, padding: 16, gap: 8 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
-    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1,
   },
   badgeText: { fontSize: 12, fontWeight: '600' },
-
-  title:   { color: WHITE, fontSize: 15, fontWeight: '600', lineHeight: 22 },
-  refCode: { color: MUTED, fontSize: 11 },
-  desc:    { color: MUTED, fontSize: 12, lineHeight: 18 },
-  note:    { fontSize: 11, fontStyle: 'italic' },
-
+  courseTitle: { fontSize: 15, fontWeight: '600', lineHeight: 22 },
+  refCode: { fontSize: 11 },
+  desc: { fontSize: 12, lineHeight: 18 },
+  note: { fontSize: 11, fontStyle: 'italic' },
   stats: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 10, padding: 10, gap: 12,
-    marginTop: 4,
+    borderRadius: 10, padding: 10, gap: 12, marginTop: 4,
   },
-  statItem:  { alignItems: 'center' },
-  statVal:   { color: WHITE, fontSize: 16, fontWeight: '700' },
-  statLbl:   { color: MUTED, fontSize: 10, marginTop: 2 },
-  statSep:   { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.1)' },
-
+  statItem: { alignItems: 'center' },
+  statVal: { fontSize: 16, fontWeight: '700' },
+  statLbl: { fontSize: 10, marginTop: 2 },
+  statSep: { width: 1, height: 24 },
   actionBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderRadius: 10, borderWidth: 1,
-    paddingVertical: 10,
-    marginTop: 4,
+    borderRadius: 10, borderWidth: 1, paddingVertical: 10, marginTop: 4,
   },
   actionText: { fontSize: 13, fontWeight: '700' },
-
-  errorBox:  { padding: 20, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', alignItems: 'center', gap: 8 },
-  errorText: { color: RED, textAlign: 'center', fontSize: 13 },
-  emptyBox:  { padding: 40, alignItems: 'center', gap: 8 },
-  emptyText: { color: MUTED, fontSize: 14 },
+  errorBox: {
+    padding: 20, borderRadius: 12, borderWidth: 1,
+    alignItems: 'center', gap: 8,
+  },
+  emptyBox: { padding: 40, alignItems: 'center', gap: 8 },
 });

@@ -100,11 +100,17 @@ Expo React Native mobile app — "DDLA MyCabinet" (Seafarer Personal Cabinet).
 - FIN login: `POST /mobile/check-fin`
 - Profile: `GET /mobile/profile`
 - Photo URL: `https://seafarer.ddla.gov.az/image/{unikal}`
-- Color scheme: BG `#060d1a`, surface `#0a1628`, teal `#00d4c8`, blue `#0057B7`
-- DDLA logo: `assets/images/ddla-logo.png` (circular DDLA emblem)
-- Key screens: splash (index.tsx), login, home tabs, profile, notifications, documents, feedback
-- Features: animated splash with logo + ocean waves, animated page transitions, pulsing online dots, ocean wave backgrounds
-- AsyncStorage keys: `session`, `pin`, `nameAz`, `nameEn`, `seamanId`, `photoUrl`
+- Theme system: `context/theme.tsx` with DARK/LIGHT color schemes, full color tokens, persisted via AsyncStorage
+- ThemeProvider wraps AuthProvider in `_layout.tsx`; use `useTheme()` to get `colors`, `isDark`, `toggleTheme`, `biometricEnabled`, `setBiometricEnabled`
+- Color tokens (DARK): BG `#060d1a`, surface `#0a1628`, teal `#00d4c8`, blue `#0057B7`; LIGHT has white bg and adjusted teal/colors
+- OceanWaves component: `components/ocean-waves.tsx` — animated SVG sinusoidal waves using react-native-svg
+- DDLA logo: `assets/images/ddla-logo.png` (circular DDLA emblem), `assets/images/mycabinet-brand.png`
+- Key screens: splash, login, home tabs (certificates, trainings, services, profile), notifications, documents, feedback, settings
+- Features: animated splash, SVG ocean waves, smooth page transitions (slide_from_right/fade_from_bottom), tab animation ('shift'), pulsing online dots, glass-morphism cards
+- Settings screen: biometric login toggle (expo-local-authentication), dark/light mode switch
+- Back buttons: all secondary screens use `<Feather name="arrow-left" />` in a styled rounded box
+- Profile: "ID: {seaman_id}" pill with Feather hash icon; Settings accessible from profile gear button
+- AsyncStorage keys: `session`, `pin`, `nameAz`, `nameEn`, `seamanId`, `photoUrl`, `theme`, `biometric`
 
 ### `scripts` (`@workspace/scripts`)
 

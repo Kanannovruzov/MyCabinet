@@ -7,19 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
+import { useTheme } from '@/context/theme';
 import { api, ProfileItem } from '@/services/api';
 import OceanWaves from '@/components/ocean-waves';
 
-const BG    = '#060d1a';
-const BG2   = '#0a1628';
-const TEAL  = '#00d4c8';
-const WHITE = '#FFFFFF';
-const MUTED = 'rgba(255,255,255,0.45)';
-const RED   = '#EF4444';
-const GREEN = '#22C55E';
-const BLUE  = '#0057B7';
-
-function PulsingDot() {
+function PulsingDot({ bgColor }: { bgColor: string }) {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(0.6)).current;
   useEffect(() => {
@@ -37,46 +29,41 @@ function PulsingDot() {
     ).start();
   }, []);
   return (
-    <View style={styles.onlineDotWrap}>
-      <Animated.View style={[styles.onlinePulse, { transform: [{ scale }], opacity }]} />
-      <View style={styles.onlineDot} />
+    <View style={pStyles.onlineDotWrap}>
+      <Animated.View style={[pStyles.onlinePulse, { transform: [{ scale }], opacity }]} />
+      <View style={[pStyles.onlineDot, { borderColor: bgColor }]} />
     </View>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null;
-  return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
-
-function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionLine} />
-        <View style={styles.sectionBadge}>
-          <Feather name={icon as any} size={12} color={TEAL} />
-          <Text style={styles.sectionTitle}>{title}</Text>
-        </View>
-        <View style={styles.sectionLine} />
-      </View>
-      <View style={styles.sectionCard}>{children}</View>
-    </View>
-  );
-}
+const pStyles = StyleSheet.create({
+  onlineDotWrap: {
+    position: 'absolute', bottom: 4, right: 4,
+    width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+  },
+  onlinePulse: {
+    position: 'absolute',
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#22C55E',
+  },
+  onlineDot: {
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#22C55E',
+    borderWidth: 2.5,
+  },
+});
 
 export default function ProfileScreen() {
   const { pin, nameAz, nameEn, photoUrl, clearAuth } = useAuth();
-  const [profile, setProfile]       = useState<ProfileItem | null>(null);
-  const [loading, setLoading]       = useState(true);
+  const { colors } = useTheme();
+  const [profile, setProfile] = useState<ProfileItem | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [userPhoto, setUserPhoto] = useState<string | null>(photoUrl);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  const C = colors;
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -85,9 +72,7 @@ export default function ProfileScreen() {
       if (res.ok && res.item) {
         setProfile(res.item);
         const id = res.item.unikal || res.item.colID;
-        if (id) {
-          setUserPhoto(`https://seafarer.ddla.gov.az/image/${id}`);
-        }
+        if (id) setUserPhoto(`https://seafarer.ddla.gov.az/image/${id}`);
       }
     } catch {}
     setLoading(false);
@@ -95,6 +80,15 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [loading]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -109,222 +103,268 @@ export default function ProfileScreen() {
 
   const profileNameAz = profile?.name_azD || profile?.name_az;
   const profileNameEn = profile?.name_enD || profile?.name_en;
-
   const displayName = nameAz || profileNameAz || `PIN: ${pin}`;
-  const displayNameEn = nameEn || profileNameEn;
   const initials = (displayName || '??')
     .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator color={TEAL} size="large" />
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: C.bg }]}>  
+        <ActivityIndicator color={C.teal} size="large" />
       </SafeAreaView>
     );
   }
 
   const p = profile as any;
   const position = p?.crew || 'Dənizçi';
+  const seamanId = p?.seaman_id || pin || '---';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgGlow1} />
-      <View style={styles.bgGlow2} />
-      <OceanWaves />
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.bgGlow1, { backgroundColor: C.teal }]} />
+      <View style={[styles.bgGlow2, { backgroundColor: C.blue }]} />
+      <OceanWaves color={C.teal} />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={TEAL} />
-        }
-      >
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarOuter}>
-            <View style={styles.avatarRing}>
-              {userPhoto ? (
-                <Image source={{ uri: userPhoto }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarText}>{initials}</Text>
-                </View>
-              )}
-            </View>
-            <PulsingDot />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={C.teal} />
+          }
+        >
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              style={[styles.settingsBtn, { backgroundColor: C.glass, borderColor: C.glassBorder }]}
+              onPress={() => router.push('/settings')}
+            >
+              <Feather name="settings" size={20} color={C.teal} />
+            </TouchableOpacity>
           </View>
 
-          <Text style={styles.profileName}>{displayName}</Text>
-          <Text style={styles.profileRole}>{position}</Text>
-
-          <View style={styles.badgeRow}>
-            <View style={styles.tealPill}>
-              <View style={styles.pillDot} />
-              <Text style={styles.pillText}>DDLA Üzvü</Text>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarOuter}>
+              <View style={[styles.avatarRing, { borderColor: C.teal }]}>
+                {userPhoto ? (
+                  <Image source={{ uri: userPhoto }} style={styles.avatarImage} />
+                ) : (
+                  <View style={[styles.avatarFallback, { backgroundColor: C.teal + '12' }]}>
+                    <Text style={[styles.avatarText, { color: C.teal }]}>{initials}</Text>
+                  </View>
+                )}
+              </View>
+              <PulsingDot bgColor={C.bg} />
             </View>
-            <View style={[styles.tealPill, { borderColor: 'rgba(34,197,94,0.3)', backgroundColor: 'rgba(34,197,94,0.06)' }]}>
-              <View style={[styles.pillDot, { backgroundColor: GREEN }]} />
-              <Text style={[styles.pillText, { color: GREEN }]}>Aktiv</Text>
+
+            <Text style={[styles.profileName, { color: C.text }]}>{displayName}</Text>
+            <Text style={[styles.profileRole, { color: C.teal }]}>{position}</Text>
+
+            <View style={styles.badgeRow}>
+              <View style={[styles.tealPill, { borderColor: C.glassBorder, backgroundColor: C.glass }]}>
+                <Feather name="hash" size={10} color={C.teal} />
+                <Text style={[styles.pillText, { color: C.teal }]}>ID: {seamanId}</Text>
+              </View>
+              <View style={[styles.tealPill, { borderColor: 'rgba(34,197,94,0.3)', backgroundColor: 'rgba(34,197,94,0.06)' }]}>
+                <View style={[styles.pillDot, { backgroundColor: C.green }]} />
+                <Text style={[styles.pillText, { color: C.green }]}>Aktiv</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/documents')}>
-            <Feather name="file-text" size={20} color={TEAL} />
-            <Text style={styles.actionLabel}>Sənədlər</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/notifications')}>
-            <Feather name="bell" size={20} color={TEAL} />
-            <Text style={styles.actionLabel}>Bildirişlər</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/feedback')}>
-            <Feather name="mail" size={20} color={TEAL} />
-            <Text style={styles.actionLabel}>Müraciət</Text>
-          </TouchableOpacity>
-        </View>
-
-        {p ? (
-          <>
-            <Section title="Şəxsi məlumatlar" icon="user">
-              <InfoRow label="Cins" value={p.gender} />
-              <InfoRow label="Doğum tarixi" value={p.dob} />
-              <InfoRow label="FIN" value={p.fin || pin} />
-              <InfoRow label="İnd. nömrəsi" value={p.ind_num} />
-            </Section>
-            <Section title="Əlaqə" icon="phone">
-              <InfoRow label="Email" value={p.email} />
-              <InfoRow label="Telefon 1" value={p.phone1} />
-              <InfoRow label="Telefon 2" value={p.phone2} />
-            </Section>
-            <Section title="Dənizçi məlumatları" icon="anchor">
-              <InfoRow label="Müəssisə" value={p.org} />
-              <InfoRow label="Şəhadətnamə" value={p.seaman_id} />
-              <InfoRow label="Verilmə" value={p.seaman_issue} />
-              <InfoRow label="Etibarlılıq" value={p.seaman_valid} />
-            </Section>
-          </>
-        ) : (
-          <View style={styles.noProfileBox}>
-            <Feather name="clipboard" size={32} color={MUTED} />
-            <Text style={styles.noProfileText}>Profil məlumatları bazadan yüklənir</Text>
+          <View style={styles.quickActions}>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: C.cardBg, borderColor: C.cardBorder }]} onPress={() => router.push('/documents')}>
+              <View style={[styles.actionIconBg, { backgroundColor: C.teal + '12' }]}>
+                <Feather name="file-text" size={18} color={C.teal} />
+              </View>
+              <Text style={[styles.actionLabel, { color: C.muted }]}>Sənədlər</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: C.cardBg, borderColor: C.cardBorder }]} onPress={() => router.push('/notifications')}>
+              <View style={[styles.actionIconBg, { backgroundColor: '#EAB308' + '12' }]}>
+                <Feather name="bell" size={18} color="#EAB308" />
+              </View>
+              <Text style={[styles.actionLabel, { color: C.muted }]}>Bildirişlər</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: C.cardBg, borderColor: C.cardBorder }]} onPress={() => router.push('/feedback')}>
+              <View style={[styles.actionIconBg, { backgroundColor: C.blue + '12' }]}>
+                <Feather name="mail" size={18} color={C.blue} />
+              </View>
+              <Text style={[styles.actionLabel, { color: C.muted }]}>Müraciət</Text>
+            </TouchableOpacity>
           </View>
-        )}
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Çıxış et</Text>
-        </TouchableOpacity>
+          {p ? (
+            <>
+              <SectionCard title="Şəxsi məlumatlar" icon="user" colors={C}>
+                <InfoRow label="Cins" value={p.gender} colors={C} />
+                <InfoRow label="Doğum tarixi" value={p.dob} colors={C} />
+                <InfoRow label="FIN" value={p.fin || pin} colors={C} last />
+              </SectionCard>
+              <SectionCard title="Əlaqə" icon="phone" colors={C}>
+                <InfoRow label="Email" value={p.email} colors={C} />
+                <InfoRow label="Telefon 1" value={p.phone1} colors={C} />
+                <InfoRow label="Telefon 2" value={p.phone2} colors={C} last />
+              </SectionCard>
+              <SectionCard title="Dənizçi məlumatları" icon="anchor" colors={C}>
+                <InfoRow label="Müəssisə" value={p.org} colors={C} />
+                <InfoRow label="Şəhadətnamə" value={p.seaman_id} colors={C} />
+                <InfoRow label="Verilmə" value={p.seaman_issue} colors={C} />
+                <InfoRow label="Etibarlılıq" value={p.seaman_valid} colors={C} last />
+              </SectionCard>
+            </>
+          ) : (
+            <View style={styles.noProfileBox}>
+              <Feather name="clipboard" size={32} color={C.muted} />
+              <Text style={[styles.noProfileText, { color: C.muted }]}>Profil məlumatları bazadan yüklənir</Text>
+            </View>
+          )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          <TouchableOpacity
+            style={[styles.settingsRow, { backgroundColor: C.cardBg, borderColor: C.cardBorder }]}
+            onPress={() => router.push('/settings')}
+          >
+            <View style={[styles.settingsRowIcon, { backgroundColor: C.teal + '12' }]}>
+              <Feather name="settings" size={18} color={C.teal} />
+            </View>
+            <Text style={[styles.settingsRowText, { color: C.text }]}>Tənzimləmələr</Text>
+            <Feather name="chevron-right" size={18} color={C.muted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Feather name="log-out" size={18} color="#EF4444" />
+            <Text style={styles.logoutText}>Çıxış et</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  center:    { alignItems: 'center', justifyContent: 'center' },
+function InfoRow({ label, value, colors: C, last }: { label: string; value: string | null | undefined; colors: any; last?: boolean }) {
+  if (!value) return null;
+  return (
+    <View style={[styles.infoRow, !last && { borderBottomWidth: 1, borderBottomColor: C.divider }]}>
+      <Text style={[styles.infoLabel, { color: C.muted }]}>{label}</Text>
+      <Text style={[styles.infoValue, { color: C.text }]}>{value}</Text>
+    </View>
+  );
+}
 
+function SectionCard({ title, icon, colors: C, children }: { title: string; icon: string; colors: any; children: React.ReactNode }) {
+  return (
+    <View style={[styles.section]}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionLine, { backgroundColor: C.divider }]} />
+        <View style={styles.sectionBadge}>
+          <Feather name={icon as any} size={12} color={C.teal} />
+          <Text style={[styles.sectionTitle, { color: C.teal }]}>{title}</Text>
+        </View>
+        <View style={[styles.sectionLine, { backgroundColor: C.divider }]} />
+      </View>
+      <View style={[styles.sectionCard, { backgroundColor: C.cardBg, borderColor: C.cardBorder }]}>{children}</View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  center: { alignItems: 'center', justifyContent: 'center' },
   bgGlow1: {
     position: 'absolute', top: -60, right: -40,
-    width: 200, height: 200, borderRadius: 100,
-    backgroundColor: TEAL, opacity: 0.04,
+    width: 200, height: 200, borderRadius: 100, opacity: 0.04,
   },
   bgGlow2: {
     position: 'absolute', bottom: 100, left: -30,
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: BLUE, opacity: 0.05,
+    width: 160, height: 160, borderRadius: 80, opacity: 0.05,
   },
-
+  topActions: {
+    flexDirection: 'row', justifyContent: 'flex-end',
+    paddingHorizontal: 20, paddingTop: 10,
+  },
+  settingsBtn: {
+    width: 42, height: 42, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
   avatarSection: {
     alignItems: 'center',
-    paddingTop: 32, paddingBottom: 20,
-    gap: 6,
+    paddingTop: 10, paddingBottom: 20, gap: 6,
   },
   avatarOuter: { position: 'relative', marginBottom: 8 },
   avatarRing: {
     width: 100, height: 100, borderRadius: 50,
-    borderWidth: 3, borderColor: TEAL,
-    overflow: 'hidden',
+    borderWidth: 3, overflow: 'hidden',
     backgroundColor: 'rgba(0,212,200,0.08)',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: TEAL, shadowOpacity: 0.3, shadowRadius: 12,
+    shadowColor: '#00d4c8', shadowOpacity: 0.3, shadowRadius: 12,
   },
   avatarImage: { width: 94, height: 94, borderRadius: 47 },
   avatarFallback: {
     width: 94, height: 94, borderRadius: 47,
-    backgroundColor: 'rgba(0,212,200,0.12)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: TEAL, fontSize: 32, fontWeight: '800' },
-  onlineDotWrap: {
-    position: 'absolute', bottom: 4, right: 4,
-    width: 18, height: 18, alignItems: 'center', justifyContent: 'center',
-  },
-  onlinePulse: {
-    position: 'absolute',
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: GREEN,
-  },
-  onlineDot: {
-    width: 14, height: 14, borderRadius: 7,
-    backgroundColor: GREEN,
-    borderWidth: 2.5, borderColor: BG,
-  },
-  profileName: { color: WHITE, fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  profileRole: { color: TEAL, fontSize: 13, fontWeight: '500' },
+  avatarText: { fontSize: 32, fontWeight: '800' },
+  profileName: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
+  profileRole: { fontSize: 13, fontWeight: '500' },
   badgeRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   tealPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderWidth: 1, borderColor: 'rgba(0,212,200,0.3)',
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: 'rgba(0,212,200,0.06)',
+    borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  pillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: TEAL },
-  pillText: { color: TEAL, fontSize: 11, fontWeight: '700' },
-
+  pillDot: { width: 6, height: 6, borderRadius: 3 },
+  pillText: { fontSize: 11, fontWeight: '700' },
   quickActions: {
     flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 20,
   },
   actionBtn: {
-    flex: 1, backgroundColor: BG2,
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,200,0.1)',
-    paddingVertical: 14, alignItems: 'center', gap: 6,
+    flex: 1, borderRadius: 14, borderWidth: 1,
+    paddingVertical: 14, alignItems: 'center', gap: 8,
   },
-  actionIcon: { fontSize: 22 },
-  actionLabel: { color: MUTED, fontSize: 11, fontWeight: '600' },
-
+  actionIconBg: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionLabel: { fontSize: 11, fontWeight: '600' },
   section: { paddingHorizontal: 20, marginBottom: 18 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10,
   },
-  sectionLine: { flex: 1, height: 1, backgroundColor: 'rgba(0,212,200,0.12)' },
+  sectionLine: { flex: 1, height: 1 },
   sectionBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sectionTitle: {
-    color: TEAL, fontSize: 11, fontWeight: '700',
+    fontSize: 11, fontWeight: '700',
     letterSpacing: 1, textTransform: 'uppercase',
   },
   sectionCard: {
-    backgroundColor: BG2,
-    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(0,212,200,0.08)',
-    overflow: 'hidden',
+    borderRadius: 16, borderWidth: 1, overflow: 'hidden',
   },
   infoRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 13,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
   },
-  infoLabel: { color: MUTED, fontSize: 12, fontWeight: '500', flex: 1 },
-  infoValue: { color: WHITE, fontSize: 13, fontWeight: '600', flex: 2, textAlign: 'right' },
-
+  infoLabel: { fontSize: 12, fontWeight: '500', flex: 1 },
+  infoValue: { fontSize: 13, fontWeight: '600', flex: 2, textAlign: 'right' },
   noProfileBox: { padding: 30, alignItems: 'center', gap: 8 },
-  noProfileText: { color: MUTED, fontSize: 14, textAlign: 'center' },
-
+  noProfileText: { fontSize: 14, textAlign: 'center' },
+  settingsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 20, marginBottom: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderRadius: 14, borderWidth: 1,
+  },
+  settingsRowIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  settingsRowText: { flex: 1, fontSize: 14, fontWeight: '600' },
   logoutBtn: {
-    marginHorizontal: 20, marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 20, marginTop: 4,
     paddingVertical: 16, borderRadius: 14,
     borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
     backgroundColor: 'rgba(239,68,68,0.06)',
-    alignItems: 'center',
   },
-  logoutText: { color: RED, fontSize: 15, fontWeight: '700' },
+  logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
 });

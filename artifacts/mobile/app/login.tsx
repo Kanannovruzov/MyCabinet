@@ -5,11 +5,13 @@ import {
   TextInput, Alert, KeyboardAvoidingView, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { api } from '@/services/api';
+import OceanWaves from '@/components/ocean-waves';
 
 const LOGIN_URL = 'https://seafarer.ddla.gov.az/login?mobile=1';
 const { width, height } = Dimensions.get('window');
@@ -21,20 +23,6 @@ const WHITE  = '#FFFFFF';
 const MUTED  = 'rgba(255,255,255,0.45)';
 const MUTED2 = 'rgba(255,255,255,0.12)';
 const RED    = '#EF4444';
-
-function Wave({ delay, y, opacity: baseOp }: { delay: number; y: number; opacity: number }) {
-  const translateX = useRef(new Animated.Value(-width)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(translateX, { toValue: width, duration: 8000, delay, useNativeDriver: true })
-    ).start();
-  }, []);
-  return (
-    <Animated.View style={[styles.wave, { top: y, opacity: baseOp, transform: [{ translateX }] }]}>
-      <View style={styles.waveLine} />
-    </Animated.View>
-  );
-}
 
 export default function LoginScreen() {
   const { setAuth } = useAuth();
@@ -135,12 +123,7 @@ export default function LoginScreen() {
     <View style={styles.root}>
       <View style={styles.bgGlow1} />
       <View style={styles.bgGlow2} />
-
-      <Wave delay={0} y={height * 0.12} opacity={0.06} />
-      <Wave delay={2000} y={height * 0.28} opacity={0.05} />
-      <Wave delay={4000} y={height * 0.44} opacity={0.04} />
-      <Wave delay={1000} y={height * 0.6} opacity={0.05} />
-      <Wave delay={3000} y={height * 0.76} opacity={0.03} />
+      <OceanWaves />
 
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView
@@ -210,7 +193,7 @@ export default function LoginScreen() {
                         <Text style={styles.mygovSub}>daxil ol</Text>
                       </View>
                       <View style={styles.mygovArrow}>
-                        <Text style={styles.mygovArrowText}>›</Text>
+                        <Feather name="chevron-right" size={20} color={WHITE} />
                       </View>
                     </>
                   )}
@@ -237,7 +220,7 @@ export default function LoginScreen() {
                     <Text style={styles.finClosedSub}>daxil ol</Text>
                   </View>
                   <View style={styles.mygovArrow}>
-                    <Text style={[styles.mygovArrowText, { color: TEAL }]}>›</Text>
+                    <Feather name="chevron-right" size={20} color={TEAL} />
                   </View>
                 </TouchableOpacity>
               ) : (
@@ -324,9 +307,6 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 280, height: 280, borderRadius: 140,
     backgroundColor: TEAL, opacity: 0.06, bottom: 80, right: -60,
   },
-  wave: { position: 'absolute', left: 0, width: width * 2, height: 2 },
-  waveLine: { width: '100%', height: 2, borderRadius: 1, backgroundColor: TEAL },
-
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingTop: 8,
