@@ -1,25 +1,56 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Platform,
+  ActivityIndicator, Platform, Animated, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
-import ParticlesBg from '@/components/particles-bg';
 
 const LOGIN_URL = 'https://seafarer.ddla.gov.az/login?mobile=1';
 
-const BG    = '#060d1a';
-const TEAL  = '#00d4c8';
-const WHITE = '#FFFFFF';
-const MUTED = 'rgba(255,255,255,0.4)';
+const { width } = Dimensions.get('window');
+
+const BG     = '#040C1A';
+const TEAL   = '#00D4C8';
+const BLUE   = '#0057B7';
+const WHITE  = '#FFFFFF';
+const MUTED  = 'rgba(255,255,255,0.45)';
+const MUTED2 = 'rgba(255,255,255,0.12)';
 
 export default function LoginScreen() {
   const { setAuth } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  // Animations
+  const pulse1 = useRef(new Animated.Value(1)).current;
+  const pulse2 = useRef(new Animated.Value(1)).current;
+  const pulse3 = useRef(new Animated.Value(1)).current;
+  const fadeIn  = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(40)).current;
+
+  useEffect(() => {
+    // Entry animation
+    Animated.parallel([
+      Animated.timing(fadeIn, { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.timing(slideUp, { toValue: 0, duration: 900, useNativeDriver: true }),
+    ]).start();
+
+    // Pulsing rings
+    const pulse = (anim: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1.15, duration: 2000, delay, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 1,    duration: 2000,         useNativeDriver: true }),
+        ])
+      ).start();
+
+    pulse(pulse1, 0);
+    pulse(pulse2, 600);
+    pulse(pulse3, 1200);
+  }, []);
 
   const handleDeepLink = (url: string) => {
     const parsed = Linking.parse(url);
@@ -54,185 +85,401 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ParticlesBg />
+    <View style={styles.root}>
+      {/* Gradient-like background layers */}
+      <View style={styles.bgGlow1} />
+      <View style={styles.bgGlow2} />
 
-      <View style={styles.topBadge}>
-        <View style={styles.badgeDot} />
-        <Text style={styles.badgeText}>DÖVLƏTİN RƏSMİ PLATFORMU</Text>
-        <View style={styles.badgeDot} />
-      </View>
+      {/* Wave decoration at top */}
+      <View style={styles.waveTop} />
 
-      <View style={styles.center}>
-        <View style={styles.glowOuter}>
-          <View style={styles.glowInner}>
-            <View style={styles.anchorCircle}>
-              <Text style={styles.anchorIcon}>⚓</Text>
-            </View>
+      {/* Subtle grid lines */}
+      {[...Array(8)].map((_, i) => (
+        <View key={i} style={[styles.gridLine, { top: `${12 * (i + 1)}%` as any }]} />
+      ))}
+
+      <SafeAreaView style={styles.safe}>
+
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <View style={styles.ddlaLogo}>
+            <Text style={styles.ddlaLogoText}>DDLA</Text>
+          </View>
+          <View style={styles.topBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>Rəsmi Platforma</Text>
           </View>
         </View>
 
-        <Text style={styles.title}>
-          Xoş gəldiniz,{'\n'}
-          <Text style={styles.titleAccent}>SeaDDLA</Text>
-        </Text>
-        <Text style={styles.subtitle}>Dənizçi Şəxsi Kabineti</Text>
+        {/* Center — anchor + rings */}
+        <Animated.View style={[styles.center, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
 
-        <View style={styles.ddlaPill}>
-          <Text style={styles.ddlaText}>Dövlət Dəniz və Liman Agentliyi</Text>
-        </View>
-      </View>
+          {/* Pulsing rings */}
+          <View style={styles.ringsWrap}>
+            <Animated.View style={[styles.ring, styles.ring3, { transform: [{ scale: pulse3 }] }]} />
+            <Animated.View style={[styles.ring, styles.ring2, { transform: [{ scale: pulse2 }] }]} />
+            <Animated.View style={[styles.ring, styles.ring1, { transform: [{ scale: pulse1 }] }]} />
 
-      <View style={styles.bottom}>
-        <TouchableOpacity
-          style={styles.mygovBtn}
-          onPress={handleLogin}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color={TEAL} size="small" />
-          ) : (
-            <View style={styles.mygovRow}>
-              <View style={styles.mygovDot} />
-              <Text style={styles.mygovText}>myGov ID ilə daxil ol</Text>
+            {/* Anchor core */}
+            <View style={styles.anchorCore}>
+              <Text style={styles.anchorEmoji}>⚓</Text>
             </View>
-          )}
-        </TouchableOpacity>
+          </View>
 
-        <Text style={styles.footer}>2026 © Bütün hüquqlar qorunur</Text>
-      </View>
-    </SafeAreaView>
+          {/* Brand name */}
+          <View style={styles.brandBlock}>
+            <Text style={styles.brandMy}>My</Text>
+            <Text style={styles.brandCabinet}>Cabinet</Text>
+          </View>
+
+          <Text style={styles.tagline}>Dənizçi Şəxsi Kabineti</Text>
+
+          {/* Feature pills */}
+          <View style={styles.featRow}>
+            {['Sertifikatlar', 'Təlimlər', 'Xidmətlər'].map(f => (
+              <View key={f} style={styles.featPill}>
+                <Text style={styles.featText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* Bottom section */}
+        <Animated.View style={[styles.bottom, { opacity: fadeIn }]}>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.divLine} />
+            <Text style={styles.divText}>daxil olmaq üçün</Text>
+            <View style={styles.divLine} />
+          </View>
+
+          {/* MyGov button */}
+          <TouchableOpacity
+            style={styles.mygovBtn}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <View style={styles.mygovInner}>
+              {loading ? (
+                <ActivityIndicator color={BG} size="small" />
+              ) : (
+                <>
+                  {/* myGov emblem */}
+                  <View style={styles.mygovEmblem}>
+                    <Text style={styles.mygovEmblemText}>myGov</Text>
+                  </View>
+                  <View style={styles.mygovTextBlock}>
+                    <Text style={styles.mygovLabel}>myGov ID ilə</Text>
+                    <Text style={styles.mygovSub}>daxil ol</Text>
+                  </View>
+                  <View style={styles.mygovArrow}>
+                    <Text style={styles.mygovArrowText}>›</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Info */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoText}>
+              Azərbaycan Respublikası
+            </Text>
+            <View style={styles.infoDot} />
+            <Text style={styles.infoText}>
+              Dövlət Dəniz və Liman Agentliyi
+            </Text>
+          </View>
+
+          <Text style={styles.footer}>© 2026 DDLA. Bütün hüquqlar qorunur.</Text>
+        </Animated.View>
+
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: BG,
+    overflow: 'hidden',
+  },
+  safe: {
+    flex: 1,
     justifyContent: 'space-between',
-    paddingVertical: 24,
+    paddingVertical: 16,
+  },
+
+  // Background decorations
+  bgGlow1: {
+    position: 'absolute',
+    width: 320, height: 320,
+    borderRadius: 160,
+    backgroundColor: BLUE,
+    opacity: 0.07,
+    top: -60, left: -80,
+  },
+  bgGlow2: {
+    position: 'absolute',
+    width: 280, height: 280,
+    borderRadius: 140,
+    backgroundColor: TEAL,
+    opacity: 0.06,
+    bottom: 80, right: -60,
+  },
+  waveTop: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height: 3,
+    backgroundColor: TEAL,
+    opacity: 0.6,
+  },
+  gridLine: {
+    position: 'absolute',
+    left: 0, right: 0,
+    height: 1,
+    backgroundColor: 'rgba(0,212,200,0.04)',
+  },
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  ddlaLogo: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: TEAL,
+    backgroundColor: 'rgba(0,212,200,0.08)',
+  },
+  ddlaLogoText: {
+    color: TEAL,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
   topBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingTop: 8,
+    gap: 6,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,200,0.2)',
+    backgroundColor: 'rgba(0,212,200,0.04)',
   },
-  badgeDot: {
+  liveDot: {
     width: 6, height: 6, borderRadius: 3,
     backgroundColor: TEAL,
-    shadowColor: TEAL, shadowOpacity: 0.9, shadowRadius: 6,
-    elevation: 4,
+    shadowColor: TEAL, shadowOpacity: 1, shadowRadius: 4,
   },
-  badgeText: {
+  liveText: {
     color: TEAL,
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.5,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
+
+  // Center
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 32,
+    gap: 20,
   },
-  glowOuter: {
-    width: 120, height: 120,
-    borderRadius: 60,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,200,0.2)',
+
+  // Rings
+  ringsWrap: {
+    width: 180, height: 180,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ring: {
+    position: 'absolute',
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  ring3: {
+    width: 170, height: 170,
+    borderColor: 'rgba(0,212,200,0.08)',
+    backgroundColor: 'rgba(0,212,200,0.02)',
+  },
+  ring2: {
+    width: 130, height: 130,
+    borderColor: 'rgba(0,212,200,0.15)',
     backgroundColor: 'rgba(0,212,200,0.04)',
   },
-  glowInner: {
-    width: 90, height: 90,
-    borderRadius: 45,
-    borderWidth: 1,
+  ring1: {
+    width: 95, height: 95,
     borderColor: 'rgba(0,212,200,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: 'rgba(0,212,200,0.08)',
   },
-  anchorCircle: {
-    width: 64, height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(0,212,200,0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,212,200,0.5)',
+  anchorCore: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: TEAL,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: TEAL,
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  anchorIcon: { fontSize: 28 },
-  title: {
+  anchorEmoji: { fontSize: 28 },
+
+  // Brand
+  brandBlock: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  brandMy: {
+    color: TEAL,
+    fontSize: 42,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  brandCabinet: {
     color: WHITE,
-    fontSize: 30,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 38,
+    fontSize: 42,
+    fontWeight: '300',
+    letterSpacing: -1,
   },
-  titleAccent: { color: TEAL },
-  subtitle: {
+  tagline: {
     color: MUTED,
     fontSize: 14,
-    textAlign: 'center',
     fontWeight: '500',
-  },
-  ddlaPill: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,200,0.3)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0,212,200,0.06)',
-    marginTop: 8,
-  },
-  ddlaText: {
-    color: TEAL,
-    fontSize: 12,
-    fontWeight: '600',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
+
+  // Feature pills
+  featRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  featPill: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,200,0.2)',
+    backgroundColor: 'rgba(0,212,200,0.06)',
+  },
+  featText: {
+    color: TEAL,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Bottom
   bottom: {
-    alignItems: 'center',
-    gap: 16,
     paddingHorizontal: 24,
+    gap: 14,
   },
-  mygovBtn: {
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: TEAL,
-    backgroundColor: 'rgba(0,212,200,0.1)',
-    alignItems: 'center',
-    shadowColor: TEAL,
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  mygovRow: {
+  divider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  mygovDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: TEAL,
-    shadowColor: TEAL, shadowOpacity: 1, shadowRadius: 6,
+  divLine: {
+    flex: 1, height: 1,
+    backgroundColor: MUTED2,
   },
-  mygovText: {
+  divText: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // myGov button
+  mygovBtn: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: BLUE,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  mygovInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0057B7',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    gap: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    minHeight: 72,
+  },
+  mygovEmblem: {
+    width: 44, height: 44,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mygovEmblemText: {
     color: WHITE,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  footer: {
+  mygovTextBlock: { flex: 1 },
+  mygovLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  mygovSub: {
+    color: WHITE,
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  mygovArrow: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mygovArrowText: {
+    color: WHITE,
+    fontSize: 22,
+    fontWeight: '300',
+    lineHeight: 24,
+  },
+
+  // Info
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  infoText: {
     color: MUTED,
     fontSize: 11,
     textAlign: 'center',
+  },
+  infoDot: {
+    width: 3, height: 3, borderRadius: 1.5,
+    backgroundColor: MUTED,
+  },
+  footer: {
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 10,
+    textAlign: 'center',
+    paddingBottom: 4,
   },
 });
