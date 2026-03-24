@@ -52,9 +52,9 @@ export default function ProfileScreen() {
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const res = await api.me();
-      if (res.ok) {
-        setProfile(res as any);
+      const res = await api.profile();
+      if (res.ok && res.item) {
+        setProfile(res.item);
       }
     } catch {}
     setLoading(false);

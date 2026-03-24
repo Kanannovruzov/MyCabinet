@@ -123,6 +123,6 @@ export const api = {
       body: JSON.stringify({ fin }),
     }),
 
-  me: () =>
-    apiFetch<{ ok: boolean; pin?: string; name_az?: string; name_en?: string; seaman_id?: string; photo_url?: string }>('/mobile/me'),
+  profile: () =>
+    apiFetch<{ ok: boolean; item: ProfileItem }>('/mobile/profile'),
 };

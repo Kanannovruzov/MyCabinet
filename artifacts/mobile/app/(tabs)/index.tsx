@@ -81,12 +81,7 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    load();
-    if (!nameAz && pin) {
-      api.me().then(res => {}).catch(() => {});
-    }
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const activeCerts = certs.filter(c =>
     c.days_label === 'Müddətsiz' || (typeof c.days_left === 'number' && c.days_left > 0)

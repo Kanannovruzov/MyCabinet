@@ -1,0 +1,579 @@
+<?php
+
+namespace App\Controllers;
+helper('encode');
+
+class Dashboard extends BaseController
+{
+    protected $helpers = ['url', 'id'];
+    protected $seamenDb;
+
+    public function __construct()
+    {
+        // Tək mənbə: yalnız seamendb
+        $this->seamenDb = \Config\Database::connect('seamendb');
+    }
+
+    private function getCurrentManId(): ?int
+    {
+        $session = session();
+
+        // FIN (PIN) sessiyadan
+        $pin = $session->get('pin') ?? ($_SESSION['pin'] ?? null);
+        if (!$pin) {
+            return null;
+        }
+
+        // Tək sorğu: ID + a_session + ad/soyad
+        $row = $this->seamenDb->table('tblSeamans')
+            ->select('colID, a_session, ADI_AZ, SOYADI_AZ, ADI, SOYADI')
+            ->where('colOnline', 0)
+            ->where('colPIN', $pin)
+            ->orderBy('colID', 'DESC')
+            ->limit(1)
+            ->get()
+            ->getRow();
+
+        if (!$row) {
+            return null;
+        }
+
+        // a_session uyğunluğu
+        $sessA = $session->get('a_session') ?? ($_SESSION['a_session'] ?? null);
+        if ($sessA && $row->a_session && $sessA !== $row->a_session) {
+            return null;
+        }
+
+        // Sessiyaya ad/soyad və seaman_id yaz (yalnız boşdursa yenilə)
+        if (!$session->has('name_az')) {
+            $session->set('name_az', trim(($row->ADI_AZ ?? '') . ' ' . ($row->SOYADI_AZ ?? '')));
+        }
+        if (!$session->has('name_en')) {
+            $session->set('name_en', trim(($row->ADI ?? '') . ' ' . ($row->SOYADI ?? '')));
+        }
+        if (!$session->has('seaman_id')) {
+            $session->set('seaman_id', (int)$row->colID);
+        }
+
+        // Qeyd: 'just_logged_in' bayrağı uğurlu LOGIN prosesində qoyulmalıdır,
+        // burada yox. Əgər mütləq lazımdırsa, aşağıdakı sətri aç:
+        // if (!$session->has('just_logged_in')) $session->set('just_logged_in', 1);
+
+        return (int)$row->colID;
+    }
+    
+    public function index()
+    {
+        $manId = $this->getCurrentManId();
+        if (!$manId) {
+            $session = session();
+            $session->destroy();
+            return redirect()->to('/welcome');
+        }
+
+
+        $seaman = $this->seamenDb->table('tblSeamans')
+            ->select('colID, ADI, SOYADI, ADI_AZ, SOYADI_AZ, IND_NUM')
+            ->where('colOnline', 0)
+            ->where('colID', $manId)
+            ->limit(1)
+            ->get()
+            ->getRow(); // obyekt kimi
+
+        $cert = $this->seamenDb->table('tblCertSeamens')
+            ->where('manID', $manId)
+            ->orderBy('sertid', 'DESC') // ən son qeyd üçün
+            ->limit(1)
+            ->get()
+            ->getRow(); // obyekt kimi nəticə
+
+
+        $data = [
+            'title_meta' => view('partials/title-meta', ['title' => ''.lang('Dashboard').'']),
+            'page_title' => view('partials/page-title', [
+                'title' => ''.lang('Files.Dashboard').'',
+                'li_1'  => ''.lang('Files.Hesabatlar').''
+            ]),
+            'seaman' => $seaman,
+            'cert' => $cert,
+        ];
+
+        return view('index', $data);
+    }
+
+    public function certificates()
+    {
+        try {
+            $manId = $this->getCurrentManId();
+            if (!$manId) {
+                return $this->response->setStatusCode(401)
+                    ->setJSON(['ok'=>false,'msg'=>'unauthorized']);
+            }
+
+            $session = session();
+            $pin = $session->get('pin') ?? ($_SESSION['pin'] ?? null);
+
+            if (!$pin) {
+                return $this->response->setStatusCode(401)
+                    ->setJSON(['ok'=>false,'msg'=>'unauthorized']);
+            }
+
+            // Bağlantı test (istəyə görə saxla)
+            $this->seamenDb->query('SELECT 1');
+
+            $rows = $this->seamenDb->table('tblCertSeamens')
+                ->select('sertid, NS, D_BADI, SC_BADI, tm_ADI, VZF_ADI, DV, DO, colName, certnote, manID,colPIN')
+                ->where('colDeleted', '0')
+                ->where('colPIN', $pin)
+                ->orderBy('sertid', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            $today = new \DateTimeImmutable('today');
+            $items = [];
+
+            foreach ($rows as $r) {
+                $start = !empty($r['DV']) ? new \DateTimeImmutable($r['DV']) : null;
+                $end   = !empty($r['DO']) ? new \DateTimeImmutable($r['DO']) : null;
+
+                $totalDays = ($start && $end) ? max(1, $start->diff($end)->days) : null;
+                $leftDays  = $end ? ($today > $end ? 0 : $today->diff($end)->days) : null;
+
+                // 30 il ~ 10950 gün -> "Müddətsiz" kimi sayaq
+                $isUnlimited = ($leftDays !== null && $leftDays > 10950);
+
+                $percent = 0;
+                if ($isUnlimited) {
+                    $percent = 100;
+                } elseif ($totalDays && $leftDays !== null) {
+                    $percent = max(0, min(100, (int)round(($leftDays / $totalDays) * 100)));
+                }
+
+                $statusEn  = trim((string)$r['colName']);
+                $isExpired = ($statusEn === 'Expired') || ($end && $today > $end) || ($leftDays === 0);
+                $statusAz  = $isExpired ? 'Müddəti bitib' : 'Dondurulmuş';
+
+                $items[] = [
+                    'id'          => (int)$r['sertid'],
+                    'ns'          => $r['NS'],
+                    'cert_name'   => $r['D_BADI'],      // başlıq kimi
+                    'code'        => $r['SC_BADI'],
+                    'sub'         => $r['VZF_ADI'],
+                    'start'       => $r['DV'],
+                    'end'         => $r['DO'],
+                    'days_left'   => $leftDays,
+                    'days_label'  => $isUnlimited ? 'Müddətsiz' : $leftDays,
+                    'percent'     => $percent,
+                    'status'      => $statusAz,
+                    'url_pdf' => site_url('certview/pdfview/' . id_encode($r['sertid'])) . '?as=pdf',
+                ];
+            }
+
+            return $this->response->setJSON(['ok' => true, 'items' => $items]);
+
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)
+                ->setJSON(['ok'=>false, 'error'=>$e->getMessage()]);
+        }
+    }
+
+    public function certificate($id)
+    {
+        try {
+            $id = (int)$id;
+
+            $row = $this->seamenDb->table('tblCertSeamens')
+                ->select('sertid, NS, D_BADI, SC_BADI, tm_ADI, VZF_ADI, DV, DO, colName, certnote')
+                ->where('colDeleted', '0')
+                ->where('sertid', $id)
+                ->get()
+                ->getRowArray();
+
+            if(!$row){
+                return $this->response->setStatusCode(404)
+                    ->setJSON(['ok'=>false,'msg'=>'not found']);
+            }
+
+            $today = new \DateTimeImmutable('today');
+            $start = !empty($row['DV']) ? new \DateTimeImmutable($row['DV']) : null;
+            $end   = !empty($row['DO']) ? new \DateTimeImmutable($row['DO']) : null;
+
+            $isUnlimited = false;
+            if ($end) {
+                $isUnlimited = ($start && $start->diff($end)->y >= 30);
+            }
+
+            $leftDays = null;
+            if (!$isUnlimited) {
+                $leftDays = $end ? ($today > $end ? 0 : $today->diff($end)->days) : null;
+            }
+            $item = [
+                'id'           => (int)$row['sertid'],
+                'ns'           => $row['NS'],
+                'name'         => $row['D_BADI'] ?: $row['SC_BADI'],
+                'D_BADI'       => $row['D_BADI'],
+                'SC_BADI'      => $row['SC_BADI'],
+                'vzf'          => $row['VZF_ADI'],
+                'tm'           => $row['tm_ADI'],
+                'dv'           => $row['DV'],
+                'do'           => $row['DO'],
+                'status_en'    => $row['colName'],
+                'note'         => $row['certnote'],
+                'days_left'    => $leftDays,
+                'is_unlimited' => $isUnlimited,
+                'url_pdf' => site_url('certview/pdfview/' . id_encode($row['sertid'])) . '?as=pdf',
+            ];
+
+            return $this->response->setJSON(['ok'=>true,'item'=>$item]);
+
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)
+                ->setJSON(['ok'=>false,'error'=>$e->getMessage()]);
+        }
+    }
+
+    public function profile($manId = null)
+    {
+        try {
+            $manId = $manId ?: $this->getCurrentManId();
+            if (!$manId) {
+                return $this->response->setStatusCode(401)
+                    ->setJSON(['ok'=>false,'msg'=>'unauthorized']);
+            }
+
+            $this->seamenDb->query('SELECT 1');
+
+            $row = $this->seamenDb->query("
+                SELECT s.unikal,
+                       s.ADI, s.SOYADI, s.ATA_ADI,
+                       s.ADI_AZ, s.SOYADI_AZ, s.ATA_ADI_AZ,
+                       s.cinsid, g.name1       AS gender_name,
+                       s.DOG_IL,
+                       s.IND_NUM, s.EMAIL, s.PH1, s.PH2,
+                       s.colPIN,
+                       s.heyetid, h.hy_name_az AS heyet_name_az, h.hy_name_en AS heyet_name_en,
+                       s.orgid,  o.ISY_BADI    AS org_name,
+                       s.colOnline,
+                       s.colNewPassportNo, s.colNewPassportID, s.colNewPassportVD,
+                       s.colOldPassportNo, s.colOldPassportID, s.colOldPassportVD,
+                       s.QEYD
+                  FROM seameninfo s
+             LEFT JOIN GenderList g ON g.id = s.cinsid
+             LEFT JOIN tblHeyet   h ON h.hy_status = s.heyetid
+             LEFT JOIN tblISY     o ON o.colID     = s.orgid
+                 WHERE s.unikal = ?
+                 LIMIT 1
+            ", [$manId])->getRowArray();
+
+            if(!$row){
+                return $this->response->setStatusCode(404)
+                    ->setJSON(['ok'=>false,'msg'=>'not found']);
+            }
+
+            $rp = $this->seamenDb->query("
+                SELECT prev_ind_num
+                  FROM seamen_ident_history
+                 WHERE seamen_id = ?
+              ORDER BY id DESC
+                 LIMIT 1
+            ", [$manId])->getRowArray();
+
+            $fmt = static function($d){
+                if (empty($d)) return null;
+                try { return (new \DateTime($d))->format('d.m.Y'); }
+                catch (\Throwable $e) { return $d; }
+            };
+
+            $data = [
+                'unikal'   => $row['unikal'],
+                'name_en'  => trim($row['ADI'].' '.$row['SOYADI'].' '.$row['ATA_ADI']),
+                'name_az'  => trim($row['ADI_AZ'].' '.$row['SOYADI_AZ'].' '.$row['ATA_ADI_AZ']),
+                'gender'   => $row['gender_name'],
+                'dob'      => $fmt($row['DOG_IL']),
+                'ind_num'  => $row['IND_NUM'],
+                'email'    => $row['EMAIL'],
+                'phone1'   => $row['PH1'],
+                'phone2'   => $row['PH2'],
+                'fin'      => $row['colPIN'],
+                'crew'     => $row['heyet_name_az'] ?: $row['heyet_name_en'],
+                'org'      => $row['org_name'],
+                'online'   => (int)$row['colOnline'] === 0 ? 'Bəli' : 'Xeyr',
+                'rp_old'   => $rp['prev_ind_num'] ?? '',
+
+                'seaman_id'    => $row['colNewPassportNo'],
+                'seaman_issue' => $fmt($row['colNewPassportID']),
+                'seaman_valid' => $fmt($row['colNewPassportVD']),
+                'note_id'      => $row['colOldPassportNo'],
+                'note_issue'   => $fmt($row['colOldPassportID']),
+                'note_valid'   => $fmt($row['colOldPassportVD']),
+
+                'comment'      => $row['QEYD'],
+            ];
+
+            return $this->response->setJSON(['ok'=>true,'item'=>$data]);
+
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)
+                ->setJSON(['ok'=>false,'error'=>$e->getMessage()]);
+        }
+    }
+
+    public function services()
+    {
+        try {
+            // Session yoxlaması istəyirsənsə, eyni getCurrentManId() ilə edə bilərik (opsional)
+            $this->seamenDb->query('SELECT 1');
+
+            $rows = $this->seamenDb->table('tblXidmet')
+                ->select('id_x, x_name_az, x_link, x_status')
+                ->where('x_status', 1)
+                ->orderBy('id_x', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            $items = array_map(function($r){
+                return [
+                    'id'    => (int)$r['id_x'],
+                    'name'  => $r['x_name_az'],
+                    'url'   => $r['x_link'],
+                    'status'=> (int)$r['x_status'],
+                ];
+            }, $rows);
+
+            return $this->response->setJSON(['ok' => true, 'items' => $items]);
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)
+                ->setJSON(['ok'=>false, 'error'=>$e->getMessage()]);
+        }
+    }
+
+    public function getAllServices() {
+        $db = $this->db ?? db_connect();
+
+        // Session → FIN
+        $session = session();
+        $fin = $session->get('pin') ?? ($_SESSION['pin'] ?? '');
+        if (!$fin) {
+            return $this->response->setJSON(['ok'=>true,'items'=>[]]);
+        }
+
+        // DB-dən çək
+        $rows = $db->table('sorgularim')
+            ->select('soid, tarixi, qeydnov, status, qeyd')
+            ->where('fin', $fin)
+            ->where('xidmet_nov', 'stc')
+            ->orderBy('tarixi', 'DESC')
+            ->get()->getResultArray();
+
+        // Status badge map
+        $labels = [
+            0 => lang('Files.Pending'),
+            1 => lang('Files.Processing'),
+            2 => lang('Files.Returned'),
+            3 => lang('Files.Completed'),
+            4 => lang('Files.Unreviewed'),
+        ];
+        $colors = [
+            0 => 'badge bg-warning',
+            1 => 'badge bg-primary',
+            2 => 'badge bg-warning',
+            3 => 'badge bg-success',
+            4 => 'badge bg-danger',
+        ];
+
+        // Front üçün hazır massiv
+        $items = [];
+        foreach ($rows as $r) {
+            $sid = (int)$r['soid'];
+            $status = (int)$r['status'];
+            $label = $labels[$status] ?? lang('Files.Unknown');
+            $color = $colors[$status] ?? 'badge bg-secondary';
+
+            $ops = ($status === 4)
+                ? "<form action='../showPdfAkt' method='post' target='_blank'>
+                 <input type='hidden' name='fileid' value='{$sid}'>
+                 <button type='submit' class='btn btn-sm btn-danger'>".lang('Files.Bax')."</button>
+               </form>"
+                : "";
+
+            $items[] = [
+                'no'     => "SS".str_pad($sid, 6, "0", STR_PAD_LEFT),
+                'tarix'  => $r['tarixi'],
+                'nov'    => $r['qeydnov'],
+                'status' => "<div class='text-center'><span class='{$color} font-size-11'>{$label}</span></div>",
+                'qeyd'   => $r['qeyd'] ?? '',
+                'ops'    => $ops,
+            ];
+        }
+
+        return $this->response->setJSON(['ok'=>true,'items'=>$items]);
+    }
+
+    public function dataUploadAPdf()
+    {
+        try {
+            $manId = $this->getCurrentManId();
+            if (!$manId) {
+                return $this->response->setStatusCode(401)
+                    ->setJSON(['ok' => false, 'msg' => 'unauthorized']);
+            }
+
+            $db = $this->db ?? db_connect();
+
+            // SAF SQL — modelsiz
+            $sql = "SELECT file_id, file_code, file_name, file_createdate,orig_name
+                    FROM files
+                    WHERE file_seamen_id = ? AND deleted = 0
+                    ORDER BY file_createdate DESC";
+            $rows = $db->query($sql, [$manId])->getResultArray();
+
+            // JSON-a map edək (view obyekt formatı istəyir)
+            $items = [];
+            $i = 1;
+            foreach ($rows as $r) {
+                $code = (string)($r['file_code'] ?? '');
+                $orig_name = (string)($r['orig_name'] ?? '');
+                // route_to əvəzinə universal link: /files/show/{code}
+                $view = site_url('files/show/' . $code);
+
+                $items[] = [
+                    'id'   => $i++,
+                    'code' => $orig_name,
+                    'date' => date('d-m-Y H:i', strtotime($r['file_createdate'])),
+                    'name' => (string)$r['file_name'],
+                    'ops'  => '<a class="btn btn-sm btn-secondary" href="'.$view.'" target="_blank">Bax</a>',
+                ];
+            }
+
+            return $this->response->setJSON(['ok' => true, 'items' => $items]);
+
+        } catch (\Throwable $e) {
+            log_message('error', 'dataUploadAPdf err: {e}', ['e' => $e->getMessage()]);
+            return $this->response->setJSON(['ok' => false, 'items' => []]);
+        }
+    }
+
+    public function showFile(string $code)
+    {
+        // Fayl metadata + BLOB msw (main) DB-dədirsə:
+        $db = $this->db ?? db_connect();
+
+        $row = $db->table('files')
+            ->select('file_blob, mime_type, orig_name, file_size')
+            ->where('file_code', $code)
+            ->where('deleted', 0)
+            ->limit(1)
+            ->get()
+            ->getRowArray();
+
+        if (!$row) {
+            return $this->response->setStatusCode(404)->setBody('Not found');
+        }
+
+        // Bəzi hostlarda göndərişdən əvvəl compression problem yaradır
+        @ini_set('zlib.output_compression', 'Off');
+
+        $mime = $row['mime_type'] ?: 'application/octet-stream';
+        $name = $row['orig_name'] ?: ($code . '.bin');
+        $size = (string)($row['file_size'] ?? strlen($row['file_blob']));
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Length', $size)
+            ->setHeader('Content-Disposition', 'inline; filename="'.basename($name).'"')
+            ->setBody($row['file_blob']);
+    }
+
+    public function feedbackSend()
+    {
+        try {
+            if (!$this->request->isAJAX() || strtoupper($this->request->getMethod()) !== 'POST') {
+                return $this->response->setStatusCode(400)->setJSON(['ok'=>false,'msg'=>'bad request']);
+            }
+
+            $manId = $this->getCurrentManId();
+            if (!$manId) {
+                return $this->response->setStatusCode(401)->setJSON(['ok'=>false,'msg'=>'unauthorized']);
+            }
+
+            // --- Rate limit (30s) ---
+            $session = session();
+            $last = (int)($session->get('fb_last_ts') ?? 0);
+            $now  = time();
+            if ($last && ($now - $last) < 30) {
+                return $this->response->setStatusCode(429)->setJSON(['ok'=>false,'msg'=>'Çox tez-tez göndərirsiniz. 30 saniyə gözləyin.']);
+            }
+
+            $topic   = trim((string)$this->request->getPost('topic'));
+            $message = trim((string)$this->request->getPost('message'));
+
+            // HTML/script tag-larını tam qadağan et
+            $topic   = strip_tags($topic);
+            $message = strip_tags($message);
+
+            if ($message === '') {
+                return $this->response->setStatusCode(422)->setJSON(['ok'=>false,'msg'=>'Mətn tələb olunur.']);
+            }
+
+            // daha kiçik limit məsləhətdir (məs: 300-500)
+            if (mb_strlen($message, 'UTF-8') > 2000) {
+                return $this->response->setStatusCode(422)->setJSON(['ok'=>false,'msg'=>'Mətn maksimum 500 simvol ola bilər.']);
+            }
+
+            // qəribə control simvollarını təmizlə (opsional)
+            $message = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $message);
+
+            $fin   = $session->get('pin') ?? ($_SESSION['pin'] ?? null);
+            $email = $session->get('email') ?? null;
+            $phone = $session->get('phone') ?? null;
+
+            $db = $this->seamenDb;
+            $today = date('Y-m-d');
+
+            $exists = $db->table('cabinet_feedback')
+                ->where('seaman_id', $manId)
+                ->where('DATE(created_at)', $today)
+                ->countAllResults();
+
+            if ($exists > 0) {
+                return $this->response->setStatusCode(429)->setJSON([
+                    'ok' => false,
+                    'msg' => 'Bu gün artıq müraciət etmisiniz. Sabah yenidən cəhd edin.'
+                ]);
+            }
+
+            $db->table('cabinet_feedback')->insert([
+                'seaman_id'  => $manId,
+                'fin'        => $fin,
+                'phone'      => $phone,
+                'email'      => $email,
+                'topic'      => $topic,
+                'message'    => $message,
+                'page'       => current_url(),
+                'user_agent' => substr((string)$this->request->getUserAgent(), 0, 250),
+                'ip_addr'    => (string)$this->request->getIPAddress(),
+                'status'     => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $session->set('fb_last_ts', $now);
+
+            return $this->response->setJSON(['ok'=>true,'msg'=>'Göndərildi']);
+        } catch (\Throwable $e) {
+
+            log_message('error', 'feedbackSend ERR: {m} | file={f} line={l}', [
+                'm' => $e->getMessage(),
+                'f' => $e->getFile(),
+                'l' => $e->getLine(),
+            ]);
+
+            // İstəsən DEV üçün müvəqqəti olaraq mesajı JSON-da da qaytar:
+            return $this->response->setStatusCode(500)->setJSON([
+                'ok'  => false,
+                'msg' => 'server error',
+                'dev' => $e->getMessage(),
+            ]);
+        }
+    }
+
+}
