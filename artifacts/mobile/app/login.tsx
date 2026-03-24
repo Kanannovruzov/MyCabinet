@@ -56,8 +56,10 @@ export default function LoginScreen() {
     if (parsed.path === 'auth') {
       const session = parsed.queryParams?.session as string | undefined;
       const pin     = parsed.queryParams?.pin     as string | undefined;
+      const nameAz  = parsed.queryParams?.name_az as string | undefined;
+      const nameEn  = parsed.queryParams?.name_en as string | undefined;
       if (session && pin) {
-        setAuth(session, pin);
+        setAuth(pin, { session, nameAz, nameEn });
         router.replace('/(tabs)');
       }
     }
@@ -100,7 +102,12 @@ export default function LoginScreen() {
       const res = await api.checkFin(trimmed);
       if (res.ok) {
         const userPin = res.pin ?? trimmed;
-        setAuth(userPin, userPin);
+        setAuth(userPin, {
+          nameAz: res.name_az,
+          nameEn: res.name_en,
+          seamanId: res.seaman_id,
+          photoUrl: res.photo_url,
+        });
         router.replace('/(tabs)');
       } else {
         setFinError(res.msg || 'Sizin kabinetiniz yoxdur. Zəhmət olmasa DDLA ilə əlaqə saxlayın.');

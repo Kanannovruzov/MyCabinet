@@ -118,8 +118,11 @@ export const api = {
     apiFetch<{ ok: boolean; items: any[] }>('/mobile/documents'),
 
   checkFin: (fin: string) =>
-    apiFetch<{ ok: boolean; pin?: string; msg?: string }>('/mobile/check-fin', {
+    apiFetch<{ ok: boolean; pin?: string; name_az?: string; name_en?: string; seaman_id?: string; photo_url?: string; msg?: string }>('/mobile/check-fin', {
       method: 'POST',
       body: JSON.stringify({ fin }),
     }),
+
+  me: () =>
+    apiFetch<{ ok: boolean; pin?: string; name_az?: string; name_en?: string; seaman_id?: string; photo_url?: string }>('/mobile/me'),
 };

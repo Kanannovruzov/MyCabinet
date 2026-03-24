@@ -1,47 +1,53 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  ActivityIndicator, RefreshControl, TouchableOpacity,
+  ActivityIndicator, RefreshControl, TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { api, CertItem } from '@/services/api';
-import ParticlesBg from '@/components/particles-bg';
 
-const BG    = '#060d1a';
-const BG2   = '#0a1628';
-const TEAL  = '#00d4c8';
-const WHITE = '#FFFFFF';
-const MUTED = 'rgba(255,255,255,0.45)';
-const RED   = '#EF4444';
+const BG     = '#060d1a';
+const BG2    = '#0a1628';
+const TEAL   = '#00d4c8';
+const WHITE  = '#FFFFFF';
+const MUTED  = 'rgba(255,255,255,0.45)';
+const RED    = '#EF4444';
 const YELLOW = '#EAB308';
+const GREEN  = '#22C55E';
+const BLUE   = '#0057B7';
 
-function certStatusColor(percent: number, isUnlimited: boolean) {
-  if (isUnlimited) return TEAL;
-  if (percent > 50) return TEAL;
+function certColor(percent: number, unlimited: boolean) {
+  if (unlimited) return TEAL;
+  if (percent > 50) return GREEN;
   if (percent > 20) return YELLOW;
   return RED;
 }
 
 function MiniCertCard({ cert }: { cert: CertItem }) {
-  const isUnlimited = cert.days_label === 'Müddətsiz';
-  const color = certStatusColor(cert.percent, isUnlimited);
+  const unlimited = cert.days_label === 'Müddətsiz';
+  const color = certColor(cert.percent, unlimited);
 
   return (
     <View style={styles.certCard}>
-      <View style={[styles.certLeftBar, { backgroundColor: color }]} />
-      <View style={styles.certBody}>
+      <View style={[styles.certAccent, { backgroundColor: color }]} />
+      <View style={styles.certContent}>
+        <View style={styles.certTop}>
+          <View style={[styles.certStatusDot, { backgroundColor: color, shadowColor: color }]} />
+          <Text style={[styles.certDaysText, { color }]}>
+            {unlimited ? 'Müddətsiz' : `${cert.days_left} gün`}
+          </Text>
+        </View>
         <Text style={styles.certName} numberOfLines={2}>{cert.cert_name}</Text>
         <Text style={styles.certCode}>{cert.code}</Text>
-        <View style={styles.progressBg}>
-          <View style={[styles.progressFill, { width: `${cert.percent}%` as any, backgroundColor: color }]} />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressBar, { width: `${Math.min(cert.percent, 100)}%` as any, backgroundColor: color }]} />
         </View>
-        <View style={styles.certFooter}>
-          <Text style={styles.certDates}>{cert.start}  →  {cert.end}</Text>
-          <Text style={[styles.certDays, { color }]}>
-            {isUnlimited ? 'Müddətsiz' : `${cert.days_left} gün`}
-          </Text>
+        <View style={styles.certDates}>
+          <Text style={styles.certDateText}>{cert.start}</Text>
+          <Text style={styles.certDateArrow}>→</Text>
+          <Text style={styles.certDateText}>{cert.end}</Text>
         </View>
       </View>
     </View>
@@ -49,7 +55,7 @@ function MiniCertCard({ cert }: { cert: CertItem }) {
 }
 
 export default function HomeScreen() {
-  const { pin } = useAuth();
+  const { pin, nameAz, photoUrl } = useAuth();
   const [certs, setCerts]           = useState<CertItem[]>([]);
   const [unread, setUnread]         = useState(0);
   const [loading, setLoading]       = useState(true);
@@ -62,7 +68,7 @@ export default function HomeScreen() {
     try {
       const [certsRes, notifRes] = await Promise.all([
         api.certificates(),
-        api.notifications(),
+        api.notifications().catch(() => ({ ok: false, items: [], unread: 0 })),
       ]);
       if (certsRes.ok) setCerts(certsRes.items);
       else setError(true);
@@ -75,21 +81,30 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    if (!nameAz && pin) {
+      api.me().then(res => {}).catch(() => {});
+    }
+  }, []);
 
   const activeCerts = certs.filter(c =>
     c.days_label === 'Müddətsiz' || (typeof c.days_left === 'number' && c.days_left > 0)
   );
+  const expiredCerts = certs.length - activeCerts.length;
   const nextExpiry = certs
     .filter(c => typeof c.days_left === 'number' && c.days_left > 0)
     .sort((a, b) => (a.days_left ?? 0) - (b.days_left ?? 0))[0];
 
-  const initials = pin ? pin.slice(0, 2).toUpperCase() : '??';
+  const displayName = nameAz || pin || '---';
+  const firstName = nameAz ? nameAz.split(' ')[0] : pin;
+  const initials = nameAz
+    ? nameAz.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    : (pin ? pin.slice(0, 2).toUpperCase() : '??');
 
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.center]}>
-        <ParticlesBg />
         <ActivityIndicator color={TEAL} size="large" />
       </SafeAreaView>
     );
@@ -97,7 +112,10 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ParticlesBg />
+      {/* Decorative bg */}
+      <View style={styles.bgCircle1} />
+      <View style={styles.bgCircle2} />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
@@ -107,9 +125,21 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Salam,</Text>
-            <Text style={styles.pinText}>{pin}</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/profile')}>
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarInitials}>{initials}</Text>
+                </View>
+              )}
+              <View style={styles.onlineDot} />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.greeting}>Xoş gəldiniz 👋</Text>
+              <Text style={styles.nameText}>{displayName}</Text>
+            </View>
           </View>
           <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/notifications')}>
             <Text style={styles.notifIcon}>🔔</Text>
@@ -121,63 +151,119 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNum}>{certs.length}</Text>
-            <Text style={styles.statLabel}>Ümumi</Text>
-          </View>
-          <View style={[styles.statCard, { borderColor: 'rgba(0,212,200,0.3)' }]}>
-            <Text style={[styles.statNum, { color: TEAL }]}>{activeCerts.length}</Text>
-            <Text style={styles.statLabel}>Aktiv</Text>
-          </View>
-          <View style={[styles.statCard, { borderColor: 'rgba(239,68,68,0.3)' }]}>
-            <Text style={[styles.statNum, { color: RED }]}>{certs.length - activeCerts.length}</Text>
-            <Text style={styles.statLabel}>Bitmiş</Text>
+        {/* Welcome card */}
+        <View style={styles.welcomeCard}>
+          <View style={styles.wcGlow} />
+          <View style={styles.wcContent}>
+            <View style={styles.wcTop}>
+              <View style={styles.wcLogo}>
+                <Text style={styles.wcLogoText}>DDLA</Text>
+              </View>
+              <View style={styles.wcBadge}>
+                <View style={styles.wcBadgeDot} />
+                <Text style={styles.wcBadgeText}>Aktiv</Text>
+              </View>
+            </View>
+            <Text style={styles.wcTitle}>Dənizçi Kabineti</Text>
+            <Text style={styles.wcSub}>Sertifikat və sənədlərinizi idarə edin</Text>
+            <View style={styles.wcLine} />
+            <View style={styles.wcStats}>
+              <View style={styles.wcStatItem}>
+                <Text style={styles.wcStatNum}>{certs.length}</Text>
+                <Text style={styles.wcStatLabel}>Sertifikat</Text>
+              </View>
+              <View style={styles.wcStatDivider} />
+              <View style={styles.wcStatItem}>
+                <Text style={[styles.wcStatNum, { color: GREEN }]}>{activeCerts.length}</Text>
+                <Text style={styles.wcStatLabel}>Aktiv</Text>
+              </View>
+              <View style={styles.wcStatDivider} />
+              <View style={styles.wcStatItem}>
+                <Text style={[styles.wcStatNum, { color: expiredCerts > 0 ? RED : MUTED }]}>{expiredCerts}</Text>
+                <Text style={styles.wcStatLabel}>Bitmiş</Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Next expiry */}
+        {/* Alert — next expiry */}
         {nextExpiry && (
           <View style={styles.alertCard}>
-            <View style={styles.alertDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.alertTitle}>Ən yaxın bitmə tarixi</Text>
-              <Text style={styles.alertName} numberOfLines={1}>{nextExpiry.cert_name}</Text>
+            <View style={styles.alertLeft}>
+              <View style={[styles.alertIconBg, nextExpiry.days_left! < 30 ? { backgroundColor: 'rgba(239,68,68,0.12)' } : {}]}>
+                <Text style={styles.alertEmoji}>⏰</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.alertLabel}>Ən yaxın bitmə</Text>
+                <Text style={styles.alertName} numberOfLines={1}>{nextExpiry.cert_name}</Text>
+              </View>
             </View>
-            <Text style={[styles.alertDays, { color: nextExpiry.days_left! < 30 ? RED : YELLOW }]}>
-              {nextExpiry.days_left} gün
-            </Text>
+            <View style={[styles.alertDaysBadge, nextExpiry.days_left! < 30 ? { borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.08)' } : {}]}>
+              <Text style={[styles.alertDaysNum, { color: nextExpiry.days_left! < 30 ? RED : YELLOW }]}>
+                {nextExpiry.days_left}
+              </Text>
+              <Text style={styles.alertDaysLabel}>gün</Text>
+            </View>
           </View>
         )}
 
-        {/* Quick links */}
-        <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => router.push('/documents')}>
-            <Text style={styles.quickIcon}>📄</Text>
-            <Text style={styles.quickText}>Sənədlər</Text>
+        {/* Quick actions grid */}
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/certificates')}>
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(0,212,200,0.1)' }]}>
+              <Text style={{ fontSize: 22 }}>📜</Text>
+            </View>
+            <Text style={styles.actionTitle}>Sertifikatlar</Text>
+            <Text style={styles.actionCount}>{certs.length}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => router.push('/feedback')}>
-            <Text style={styles.quickIcon}>✉️</Text>
-            <Text style={styles.quickText}>Əks-əlaqə</Text>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/trainings')}>
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(0,87,183,0.12)' }]}>
+              <Text style={{ fontSize: 22 }}>🎓</Text>
+            </View>
+            <Text style={styles.actionTitle}>Təlimlər</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => router.push('/notifications')}>
-            <Text style={styles.quickIcon}>🔔</Text>
-            <Text style={styles.quickText}>Bildirişlər</Text>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/documents')}>
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(234,179,8,0.1)' }]}>
+              <Text style={{ fontSize: 22 }}>📄</Text>
+            </View>
+            <Text style={styles.actionTitle}>Sənədlər</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/services')}>
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(34,197,94,0.1)' }]}>
+              <Text style={{ fontSize: 22 }}>⚙️</Text>
+            </View>
+            <Text style={styles.actionTitle}>Xidmətlər</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Certs section */}
+        {/* Mini action row */}
+        <View style={styles.miniActions}>
+          <TouchableOpacity style={styles.miniBtn} onPress={() => router.push('/feedback')}>
+            <Text style={{ fontSize: 16 }}>✉️</Text>
+            <Text style={styles.miniBtnText}>Müraciət</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.miniBtn} onPress={() => router.push('/notifications')}>
+            <Text style={{ fontSize: 16 }}>🔔</Text>
+            <Text style={styles.miniBtnText}>Bildirişlər</Text>
+            {unread > 0 && <View style={styles.miniBadge}><Text style={styles.miniBadgeText}>{unread}</Text></View>}
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent certs */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Sertifikatlar</Text>
+            <View style={styles.sectionHeaderLeft}>
+              <View style={styles.sectionDot} />
+              <Text style={styles.sectionTitle}>Son sertifikatlar</Text>
+            </View>
             <TouchableOpacity onPress={() => router.push('/(tabs)/certificates')}>
-              <Text style={styles.seeAll}>Hamısı →</Text>
+              <Text style={styles.seeAll}>Hamısı ›</Text>
             </TouchableOpacity>
           </View>
 
           {error ? (
             <View style={styles.errorBox}>
+              <Text style={styles.errorEmoji}>⚠️</Text>
               <Text style={styles.errorText}>Məlumatlar yüklənə bilmədi</Text>
               <TouchableOpacity onPress={() => load()} style={styles.retryBtn}>
                 <Text style={styles.retryText}>Yenidən cəhd et</Text>
@@ -185,6 +271,7 @@ export default function HomeScreen() {
             </View>
           ) : certs.length === 0 ? (
             <View style={styles.emptyBox}>
+              <Text style={{ fontSize: 32 }}>📭</Text>
               <Text style={styles.emptyText}>Sertifikat tapılmadı</Text>
             </View>
           ) : (
@@ -202,150 +289,204 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
   center:    { alignItems: 'center', justifyContent: 'center' },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+  bgCircle1: {
+    position: 'absolute', top: -80, right: -60,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: TEAL, opacity: 0.04,
   },
-  greeting: { color: MUTED, fontSize: 13, fontWeight: '500' },
-  pinText:  { color: WHITE, fontSize: 20, fontWeight: '700', marginTop: 2 },
+  bgCircle2: {
+    position: 'absolute', bottom: 100, left: -40,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: BLUE, opacity: 0.05,
+  },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarWrap: { position: 'relative' },
+  avatarImg: {
+    width: 48, height: 48, borderRadius: 24,
+    borderWidth: 2, borderColor: TEAL,
+  },
+  avatarFallback: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: 'rgba(0,212,200,0.12)',
+    borderWidth: 2, borderColor: TEAL,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarInitials: { color: TEAL, fontSize: 16, fontWeight: '800' },
+  onlineDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: GREEN,
+    borderWidth: 2.5, borderColor: BG,
+  },
+  greeting: { color: MUTED, fontSize: 12, fontWeight: '500' },
+  nameText: { color: WHITE, fontSize: 18, fontWeight: '700', marginTop: 1 },
   notifBtn: {
-    width: 44, height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,212,200,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,200,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(0,212,200,0.06)',
+    borderWidth: 1, borderColor: 'rgba(0,212,200,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
   notifIcon: { fontSize: 20 },
   badge: {
-    position: 'absolute',
-    top: -4, right: -4,
-    backgroundColor: RED,
-    borderRadius: 10,
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: RED, borderRadius: 10,
     minWidth: 18, height: 18,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 4,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
   },
   badgeText: { color: WHITE, fontSize: 10, fontWeight: '700' },
 
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginTop: 12,
-  },
-  statCard: {
-    flex: 1,
+  welcomeCard: {
+    marginHorizontal: 20, marginTop: 8,
+    borderRadius: 20, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(0,212,200,0.15)',
     backgroundColor: BG2,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: 14,
-    alignItems: 'center',
   },
-  statNum:   { color: WHITE, fontSize: 22, fontWeight: '700' },
-  statLabel: { color: MUTED, fontSize: 11, marginTop: 2 },
-
-  alertCard: {
-    margin: 20,
-    marginBottom: 0,
-    padding: 16,
-    backgroundColor: 'rgba(234,179,8,0.06)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(234,179,8,0.25)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  wcGlow: {
+    position: 'absolute', top: -40, right: -30,
+    width: 120, height: 120, borderRadius: 60,
+    backgroundColor: TEAL, opacity: 0.06,
   },
-  alertDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: YELLOW,
-    shadowColor: YELLOW, shadowOpacity: 1, shadowRadius: 6,
-  },
-  alertTitle: { color: MUTED, fontSize: 11, fontWeight: '600' },
-  alertName:  { color: WHITE, fontSize: 13, fontWeight: '600', marginTop: 2 },
-  alertDays:  { fontSize: 16, fontWeight: '700' },
-
-  quickRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginTop: 20,
-  },
-  quickBtn: {
-    flex: 1,
-    backgroundColor: BG2,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,200,0.12)',
-    padding: 14,
-    alignItems: 'center',
-    gap: 8,
-  },
-  quickIcon: { fontSize: 22 },
-  quickText: { color: MUTED, fontSize: 11, fontWeight: '600', textAlign: 'center' },
-
-  section: { marginTop: 24, paddingHorizontal: 20 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  wcContent: { padding: 18 },
+  wcTop: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: 12,
   },
-  sectionTitle: { color: WHITE, fontSize: 17, fontWeight: '700' },
-  seeAll:       { color: TEAL, fontSize: 13, fontWeight: '600' },
+  wcLogo: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 6, borderWidth: 1, borderColor: TEAL,
+    backgroundColor: 'rgba(0,212,200,0.08)',
+  },
+  wcLogoText: { color: TEAL, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  wcBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 12, backgroundColor: 'rgba(34,197,94,0.1)',
+    borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)',
+  },
+  wcBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN },
+  wcBadgeText: { color: GREEN, fontSize: 11, fontWeight: '600' },
+  wcTitle: { color: WHITE, fontSize: 18, fontWeight: '700' },
+  wcSub: { color: MUTED, fontSize: 12, marginTop: 4 },
+  wcLine: { height: 1, backgroundColor: 'rgba(0,212,200,0.1)', marginVertical: 14 },
+  wcStats: { flexDirection: 'row', alignItems: 'center' },
+  wcStatItem: { flex: 1, alignItems: 'center' },
+  wcStatNum: { color: WHITE, fontSize: 24, fontWeight: '800' },
+  wcStatLabel: { color: MUTED, fontSize: 11, marginTop: 2 },
+  wcStatDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.08)' },
+
+  alertCard: {
+    marginHorizontal: 20, marginTop: 14, padding: 14,
+    backgroundColor: 'rgba(234,179,8,0.05)',
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(234,179,8,0.2)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  alertLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  alertIconBg: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(234,179,8,0.1)', alignItems: 'center', justifyContent: 'center',
+  },
+  alertEmoji: { fontSize: 18 },
+  alertLabel: { color: MUTED, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  alertName: { color: WHITE, fontSize: 13, fontWeight: '600', marginTop: 2 },
+  alertDaysBadge: {
+    alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 12, borderWidth: 1,
+    borderColor: 'rgba(234,179,8,0.3)', backgroundColor: 'rgba(234,179,8,0.08)',
+  },
+  alertDaysNum: { fontSize: 18, fontWeight: '800' },
+  alertDaysLabel: { color: MUTED, fontSize: 10, fontWeight: '600' },
+
+  actionsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: 20, gap: 10, marginTop: 18,
+  },
+  actionCard: {
+    width: '47%' as any, backgroundColor: BG2,
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(0,212,200,0.08)',
+    padding: 16, gap: 8,
+  },
+  actionIcon: {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionTitle: { color: WHITE, fontSize: 13, fontWeight: '600' },
+  actionCount: { color: MUTED, fontSize: 11 },
+
+  miniActions: {
+    flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 14,
+  },
+  miniBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 12, borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  miniBtnText: { color: MUTED, fontSize: 12, fontWeight: '600' },
+  miniBadge: {
+    backgroundColor: RED, borderRadius: 8, minWidth: 16, height: 16,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+  },
+  miniBadgeText: { color: WHITE, fontSize: 9, fontWeight: '700' },
+
+  section: { marginTop: 22, paddingHorizontal: 20 },
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: TEAL,
+    shadowColor: TEAL, shadowOpacity: 0.8, shadowRadius: 4,
+  },
+  sectionTitle: { color: WHITE, fontSize: 16, fontWeight: '700' },
+  seeAll: { color: TEAL, fontSize: 13, fontWeight: '600' },
 
   certCard: {
-    flexDirection: 'row',
-    backgroundColor: BG2,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,200,0.1)',
-    marginBottom: 10,
-    overflow: 'hidden',
+    flexDirection: 'row', backgroundColor: BG2,
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(0,212,200,0.08)',
+    marginBottom: 10, overflow: 'hidden',
   },
-  certLeftBar: { width: 4 },
-  certBody:    { flex: 1, padding: 14 },
-  certName:    { color: WHITE, fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  certCode:    { color: MUTED, fontSize: 11, marginTop: 2 },
-  progressBg: {
-    height: 4, backgroundColor: 'rgba(255,255,255,0.08)',
+  certAccent: { width: 4 },
+  certContent: { flex: 1, padding: 14 },
+  certTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  certStatusDot: {
+    width: 8, height: 8, borderRadius: 4,
+    shadowOpacity: 0.8, shadowRadius: 4,
+  },
+  certDaysText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  certName: { color: WHITE, fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  certCode: { color: MUTED, fontSize: 11, marginTop: 3 },
+  progressTrack: {
+    height: 4, backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 2, marginTop: 10,
   },
-  progressFill: { height: 4, borderRadius: 2 },
-  certFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
+  progressBar: { height: 4, borderRadius: 2 },
+  certDates: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
   },
-  certDates: { color: MUTED, fontSize: 11 },
-  certDays:  { fontSize: 12, fontWeight: '700' },
+  certDateText: { color: MUTED, fontSize: 11 },
+  certDateArrow: { color: 'rgba(255,255,255,0.2)', fontSize: 11 },
 
   errorBox: {
-    padding: 20,
-    backgroundColor: 'rgba(239,68,68,0.08)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.2)',
-    alignItems: 'center',
-    gap: 12,
+    padding: 24, backgroundColor: 'rgba(239,68,68,0.06)',
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(239,68,68,0.15)',
+    alignItems: 'center', gap: 10,
   },
+  errorEmoji: { fontSize: 28 },
   errorText: { color: RED, fontSize: 13, textAlign: 'center' },
-  retryBtn:  {
+  retryBtn: {
     paddingHorizontal: 20, paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
+    borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
   },
   retryText: { color: RED, fontSize: 13, fontWeight: '600' },
 
-  emptyBox:  { padding: 40, alignItems: 'center' },
+  emptyBox: { padding: 40, alignItems: 'center', gap: 8 },
   emptyText: { color: MUTED, fontSize: 14 },
 });
