@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,17 +17,73 @@ import 'screens/documents_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/settings_screen.dart';
 
+const String _devFin = '5TS8QH4';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
-      ],
-      child: const MyCabinetApp(),
-    ),
+
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const _ErrorFallbackWidget();
+  };
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (kDebugMode) {
+      FlutterError.dumpErrorToConsole(details);
+    }
+  };
+
+  runZonedGuarded(
+    () {
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
+            ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
+          ],
+          child: const MyCabinetApp(),
+        ),
+      );
+    },
+    (error, stack) {
+      if (kDebugMode) {
+        debugPrint('Unhandled error: $error');
+        debugPrint('$stack');
+      }
+    },
   );
+}
+
+class _ErrorFallbackWidget extends StatelessWidget {
+  const _ErrorFallbackWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF060d1a),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Color(0xFF00D4C8), size: 56),
+              const SizedBox(height: 16),
+              const Text(
+                'Xəta baş verdi',
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Gözlənilməz xəta baş verdi.\nZəhmət olmasa yenidən cəhd edin.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyCabinetApp extends StatelessWidget {

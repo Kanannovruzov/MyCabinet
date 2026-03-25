@@ -120,7 +120,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   Widget _svcCard(dynamic svc, dynamic c) {
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse('$baseUrl${svc['url']}')),
+      onTap: () {
+        final url = svc['url']?.toString() ?? '';
+        final fullUrl = url.startsWith('http') ? url : '$baseUrl$url';
+        launchUrl(Uri.parse(fullUrl)).catchError((_) => false);
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),

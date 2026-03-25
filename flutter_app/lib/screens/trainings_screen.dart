@@ -99,8 +99,11 @@ class _TrainingsScreenState extends State<TrainingsScreen> {
 
     return GestureDetector(
       onTap: locked ? null : () async {
-        final url = course['course_url'];
-        if (url != null) await launchUrl(Uri.parse('${baseUrl}$url'));
+        final url = course['course_url']?.toString();
+        if (url != null) {
+          final fullUrl = url.startsWith('http') ? url : '$baseUrl$url';
+          await launchUrl(Uri.parse(fullUrl)).catchError((_) => false);
+        }
       },
       child: Opacity(
         opacity: locked ? 0.7 : 1.0,
