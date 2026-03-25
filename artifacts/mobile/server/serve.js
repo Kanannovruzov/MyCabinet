@@ -84,7 +84,7 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
 const PUBLIC_ROOT = path.resolve(__dirname, "public");
 
 function serveStaticFile(urlPath, res) {
-  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "").replace(/^\/+/, "");
 
   const publicPath = path.join(PUBLIC_ROOT, safePath);
   if (publicPath.startsWith(PUBLIC_ROOT) && fs.existsSync(publicPath) && !fs.statSync(publicPath).isDirectory()) {
