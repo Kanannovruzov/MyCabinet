@@ -81,10 +81,22 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
   res.end(html);
 }
 
+const PUBLIC_ROOT = path.resolve(__dirname, "public");
+
 function serveStaticFile(urlPath, res) {
   const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const filePath = path.join(STATIC_ROOT, safePath);
 
+  const publicPath = path.join(PUBLIC_ROOT, safePath);
+  if (publicPath.startsWith(PUBLIC_ROOT) && fs.existsSync(publicPath) && !fs.statSync(publicPath).isDirectory()) {
+    const ext = path.extname(publicPath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || "application/octet-stream";
+    const content = fs.readFileSync(publicPath);
+    res.writeHead(200, { "content-type": contentType, "cache-control": "public, max-age=31536000, immutable" });
+    res.end(content);
+    return;
+  }
+
+  const filePath = path.join(STATIC_ROOT, safePath);
   if (!filePath.startsWith(STATIC_ROOT)) {
     res.writeHead(403);
     res.end("Forbidden");

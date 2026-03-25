@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import { reloadAppAsync } from "expo";
 import React, { useState } from "react";
 import {
@@ -24,12 +23,12 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const insets = useSafeAreaInsets();
 
   const theme = {
-    background: isDark ? "#000000" : "#FFFFFF",
-    backgroundSecondary: isDark ? "#1C1C1E" : "#F2F2F7",
+    background: isDark ? "#060d1a" : "#FFFFFF",
+    backgroundSecondary: isDark ? "#0f1b2e" : "#F2F2F7",
     text: isDark ? "#FFFFFF" : "#000000",
-    textSecondary: isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.7)",
-    link: "#007AFF",
-    buttonText: "#FFFFFF",
+    textSecondary: isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)",
+    accent: "#00D4C8",
+    buttonText: "#060d1a",
   };
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -38,7 +37,6 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     try {
       await reloadAppAsync();
     } catch (restartError) {
-      console.error("Failed to restart app:", restartError);
       resetError();
     }
   };
@@ -58,7 +56,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
@@ -73,17 +71,21 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             },
           ]}
         >
-          <Feather name="alert-circle" size={20} color={theme.text} />
+          <Text style={{ fontSize: 20 }}>🔍</Text>
         </Pressable>
       ) : null}
 
       <View style={styles.content}>
+        <View style={styles.iconCircle}>
+          <Text style={styles.iconText}>!</Text>
+        </View>
+
         <Text style={[styles.title, { color: theme.text }]}>
-          Something went wrong
+          Xəta baş verdi
         </Text>
 
         <Text style={[styles.message, { color: theme.textSecondary }]}>
-          Please reload the app to continue.
+          Narahatlığa görə üzr istəyirik. Zəhmət olmasa yenidən cəhd edin.
         </Text>
 
         <Pressable
@@ -91,14 +93,14 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: theme.link,
+              backgroundColor: theme.accent,
               opacity: pressed ? 0.9 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
         >
           <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-            Try Again
+            Yenidən cəhd edin
           </Text>
         </Pressable>
       </View>
@@ -128,7 +130,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                 ]}
               >
                 <Text style={[styles.modalTitle, { color: theme.text }]}>
-                  Error Details
+                  Xəta detalları (DEV)
                 </Text>
                 <Pressable
                   onPress={() => setIsModalVisible(false)}
@@ -139,7 +141,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                     { opacity: pressed ? 0.6 : 1 },
                   ]}
                 >
-                  <Feather name="x" size={24} color={theme.text} />
+                  <Text style={{ fontSize: 20, color: theme.text }}>✕</Text>
                 </Pressable>
               </View>
 
@@ -195,16 +197,33 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 600,
   },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(0,212,200,0.12)",
+    borderWidth: 2,
+    borderColor: "#00D4C8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  iconText: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#00D4C8",
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
     textAlign: "center",
-    lineHeight: 40,
+    lineHeight: 32,
   },
   message: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
-    lineHeight: 24,
+    lineHeight: 22,
+    paddingHorizontal: 16,
   },
   topButton: {
     position: "absolute",

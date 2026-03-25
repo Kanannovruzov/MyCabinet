@@ -1,15 +1,44 @@
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
+import * as Font from 'expo-font';
+import {
+  MaterialIcons,
+  Feather,
+} from '@expo/vector-icons';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/context/auth';
 import { ThemeProvider, useTheme } from '@/context/theme';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export const unstable_settings = {
   initialRouteName: 'index',
 };
+
+function useFontLoader() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await Font.loadAsync({
+          ...MaterialIcons.font,
+          ...Feather.font,
+        });
+      } catch (e) {
+        console.warn('Font loading failed, continuing with fallback:', e);
+      } finally {
+        setFontsLoaded(true);
+      }
+    })();
+  }, []);
+
+  return fontsLoaded;
+}
 
 function InnerLayout() {
   const { colors } = useTheme();
@@ -70,14 +99,26 @@ function InnerLayout() {
 }
 
 export default function RootLayout() {
+  const fontsLoaded = useFontLoader();
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#060d1a', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#00D4C8" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <ThemeProvider>
-          <AuthProvider>
-            <InnerLayout />
-          </AuthProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <AuthProvider>
+              <InnerLayout />
+            </AuthProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
