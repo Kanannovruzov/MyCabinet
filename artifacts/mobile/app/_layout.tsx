@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import * as Font from 'expo-font';
 import {
   MaterialIcons,
@@ -9,11 +9,15 @@ import {
 } from '@expo/vector-icons';
 import 'react-native-reanimated';
 
-import { AuthProvider } from '@/context/auth';
+import { AuthProvider, useAuth } from '@/context/auth';
 import { ThemeProvider, useTheme } from '@/context/theme';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+const DEV_FIN = '5TS8QH4';
+
+LogBox.ignoreAllLogs(true);
 
 export const unstable_settings = {
   initialRouteName: 'index',
@@ -38,6 +42,20 @@ function useFontLoader() {
   }, []);
 
   return fontsLoaded;
+}
+
+function DevLogController() {
+  const { pin } = useAuth();
+
+  useEffect(() => {
+    if (pin === DEV_FIN) {
+      LogBox.ignoreAllLogs(false);
+    } else {
+      LogBox.ignoreAllLogs(true);
+    }
+  }, [pin]);
+
+  return null;
 }
 
 function InnerLayout() {
@@ -115,6 +133,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ThemeProvider>
             <AuthProvider>
+              <DevLogController />
               <InnerLayout />
             </AuthProvider>
           </ThemeProvider>

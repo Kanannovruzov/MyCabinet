@@ -149,7 +149,10 @@ export default function ServicesScreen() {
                 <TouchableOpacity
                   key={svc.id}
                   style={[styles.svcCard, { backgroundColor: C.cardBg, borderColor: C.cardBorder }]}
-                  onPress={() => Linking.openURL(`${BASE_URL}${svc.url}`)}
+                  onPress={() => {
+                    const url = svc.url.startsWith('http') ? svc.url : `${BASE_URL}${svc.url}`;
+                    Linking.openURL(url).catch(() => {});
+                  }}
                   activeOpacity={0.75}
                 >
                   <View style={[styles.svcIcon, { backgroundColor: C.teal + '12', borderColor: C.teal + '25' }]}>
